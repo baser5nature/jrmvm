@@ -1,0 +1,2829 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b0c0c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JRMVM">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/svg+xml" href="./icon.svg">
+    <link rel="apple-touch-icon" href="./icon.svg">
+    <title>JRMVM - Car Management & Fuel Log</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#7C3AED', // Cookie Purple duochrome primary
+                        primaryDark: '#5B21B6',
+                        
+                        surfaceLight: '#FFFFFF',
+                        surfaceDark: '#1F2937',
+                        bgLight: '#F3F4F6',
+                        bgDark: '#111827'
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        (function() {
+            try {
+                var raw = localStorage.getItem('jrmvm_state_v1');
+                var st = raw ? JSON.parse(raw) : null;
+                var darkMode = st && typeof st.darkMode === 'boolean' ? st.darkMode : true;
+                var mode = st && st.themeMode ? st.themeMode : 'tmog';
+                if (mode === 'default') mode = 'cookie';
+                var htmlEl = document.documentElement;
+                if (darkMode) htmlEl.classList.add('dark');
+                if (mode === 'tmog') {
+                    htmlEl.classList.add('theme-tmog');
+                } else if (mode === 'vehicle' && st && Array.isArray(st.vehicles)) {
+                    var veh = st.vehicles.find(function(v) { return v.id === st.activeVehicleId; });
+                    if (veh && veh.color) {
+                        htmlEl.style.setProperty('--primary-color', veh.color);
+                    }
+                }
+            } catch (e) {
+                document.documentElement.classList.add('dark', 'theme-tmog');
+            }
+        })();
+    </script>
+    <!-- Chart.js for statistics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .app-icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            vertical-align: -0.125em;
+            flex-shrink: 0;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ==================== TMOG MONOCHROME THEME ==================== */
+        html.theme-tmog body {
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* TMOG Dark Mode (Authentic Screenshot Aesthetic: Obsidian #0b0c0c, Panels #141416, Borders #272729, Crisp White/Silver) */
+        html.theme-tmog.dark body {
+            background-color: #0b0c0c !important;
+            color: #f4f4f5 !important;
+        }
+        html.theme-tmog.dark #app-header {
+            background-color: #000000 !important;
+            color: #ffffff !important;
+            border-bottom: 1px solid #272729 !important;
+            box-shadow: none !important;
+        }
+        html.theme-tmog.dark #app-header #current-vehicle-subtitle {
+            color: #a1a1aa !important;
+        }
+        html.theme-tmog.dark #app-header #app-title {
+            color: #ffffff !important;
+        }
+        html.theme-tmog.dark #app-header #app-logo-badge {
+            background-color: #1c1c1f !important;
+            color: #ffffff !important;
+            border: 1px solid #2e2e32 !important;
+            box-shadow: none !important;
+        }
+        html.theme-tmog.dark #app-header .header-action-btn {
+            background-color: #141416 !important;
+            color: #ffffff !important;
+            border: 1px solid #272729 !important;
+        }
+        html.theme-tmog.dark #app-header .header-action-btn:hover {
+            background-color: #272729 !important;
+        }
+        html.theme-tmog.dark #app-header .app-icon, html.theme-tmog.dark #app-header i {
+            color: #ffffff !important;
+        }
+        html.theme-tmog.dark nav {
+            background-color: #141416 !important;
+            border-top: 1px solid #272729 !important;
+        }
+        html.theme-tmog.dark .nav-btn.text-primary {
+            color: #ffffff !important;
+        }
+        html.theme-tmog.dark .nav-btn.text-gray-400 {
+            color: #71717a !important;
+        }
+        html.theme-tmog.dark .nav-btn.text-gray-400:hover {
+            color: #d4d4d8 !important;
+        }
+
+        /* Cards, Modals & Containers in TMOG Dark */
+        html.theme-tmog.dark .dark\:bg-surfaceDark {
+            background-color: #141416 !important;
+            border-color: #272729 !important;
+        }
+        html.theme-tmog.dark .dark\:bg-bgDark {
+            background-color: #0b0c0c !important;
+        }
+        html.theme-tmog.dark .dark\:border-gray-800,
+        html.theme-tmog.dark .dark\:border-gray-700,
+        html.theme-tmog.dark .dark\:divide-gray-800 > :not([hidden]) ~ :not([hidden]) {
+            border-color: #272729 !important;
+        }
+
+        /* Vehicle Banner in TMOG Dark */
+        html.theme-tmog.dark #tab-dashboard .bg-gradient-to-r {
+            background: linear-gradient(135deg, #1c1c1f 0%, #141416 100%) !important;
+            border: 1px solid #2e2e32 !important;
+            color: #ffffff !important;
+            box-shadow: none !important;
+        }
+        html.theme-tmog.dark #tab-dashboard .bg-gradient-to-r p,
+        html.theme-tmog.dark #tab-dashboard .bg-gradient-to-r span {
+            color: #a1a1aa !important;
+        }
+        html.theme-tmog.dark #tab-dashboard .bg-gradient-to-r h2,
+        html.theme-tmog.dark #tab-dashboard .bg-gradient-to-r #dash-veh-fuel {
+            color: #ffffff !important;
+        }
+        html.theme-tmog.dark #tab-dashboard .bg-gradient-to-r #dash-veh-name {
+            background-color: #272729 !important;
+            color: #f4f4f5 !important;
+            border: 1px solid #3f3f46 !important;
+        }
+
+        /* Primary & Action Buttons in TMOG Dark */
+        html.theme-tmog.dark .bg-primary {
+            background-color: #ffffff !important;
+            color: #0b0c0c !important;
+        }
+        html.theme-tmog.dark .bg-primary:hover {
+            background-color: #e4e4e7 !important;
+        }
+        html.theme-tmog.dark .bg-blue-600,
+        html.theme-tmog.dark .bg-amber-600,
+        html.theme-tmog.dark .bg-green-600 {
+            background-color: #272729 !important;
+            color: #ffffff !important;
+            border: 1px solid #3f3f46 !important;
+        }
+        html.theme-tmog.dark .bg-blue-600:hover,
+        html.theme-tmog.dark .bg-amber-600:hover,
+        html.theme-tmog.dark .bg-green-600:hover {
+            background-color: #323236 !important;
+        }
+
+        /* Quick Action Tiles & Fuelio CSV Buttons in TMOG Dark */
+        html.theme-tmog.dark .dark\:bg-purple-950\/40,
+        html.theme-tmog.dark .dark\:bg-blue-950\/40,
+        html.theme-tmog.dark .dark\:bg-amber-950\/40,
+        html.theme-tmog.dark .dark\:bg-green-900\/30 {
+            background-color: #141416 !important;
+            border-color: #272729 !important;
+            color: #f4f4f5 !important;
+        }
+        html.theme-tmog.dark .dark\:bg-purple-950\/40:hover,
+        html.theme-tmog.dark .dark\:bg-blue-950\/40:hover,
+        html.theme-tmog.dark .dark\:bg-amber-950\/40:hover,
+        html.theme-tmog.dark .dark\:bg-green-900\/30:hover {
+            background-color: #1e1e22 !important;
+            border-color: #3f3f46 !important;
+        }
+
+        /* Monochrome Icons, Text & Badges in TMOG Dark */
+        html.theme-tmog.dark .text-primary,
+        html.theme-tmog.dark .text-purple-500,
+        html.theme-tmog.dark .text-blue-500,
+        html.theme-tmog.dark .text-amber-500,
+        html.theme-tmog.dark .text-green-500,
+        html.theme-tmog.dark .dark\:text-purple-400,
+        html.theme-tmog.dark .dark\:text-blue-400,
+        html.theme-tmog.dark .dark\:text-amber-400,
+        html.theme-tmog.dark .dark\:text-green-400,
+        html.theme-tmog.dark .text-amber-300 {
+            color: #e4e4e7 !important;
+        }
+        html.theme-tmog.dark .dark\:bg-purple-950,
+        html.theme-tmog.dark .dark\:bg-blue-950,
+        html.theme-tmog.dark .dark\:bg-amber-950,
+        html.theme-tmog.dark .bg-primary\/10,
+        html.theme-tmog.dark .bg-primary\/20 {
+            background-color: #272729 !important;
+            color: #f4f4f5 !important;
+        }
+        html.theme-tmog.dark .dark\:bg-red-950 {
+            background-color: #ffffff !important;
+            color: #0b0c0c !important;
+        }
+        html.theme-tmog.dark .border-primary {
+            border-color: #ffffff !important;
+        }
+        html.theme-tmog.dark .ring-primary {
+            --tw-ring-color: #ffffff !important;
+        }
+        html.theme-tmog.dark .bg-primary\/5 {
+            background-color: #1c1c1f !important;
+        }
+        html.theme-tmog.dark input[type="checkbox"] {
+            accent-color: #ffffff !important;
+        }
+
+        /* TMOG Light Mode (Consistent Crisp Light Monochrome: Soft Gray #f4f4f5, White Panels #ffffff, Borders #e4e4e7, Ink #141416) */
+        html.theme-tmog:not(.dark) body {
+            background-color: #f4f4f5 !important;
+            color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) #app-header {
+            background-color: #ffffff !important;
+            color: #141416 !important;
+            border-bottom: 1px solid #e4e4e7 !important;
+            box-shadow: none !important;
+        }
+        html.theme-tmog:not(.dark) #app-header #app-title {
+            color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) #app-header #current-vehicle-subtitle {
+            color: #71717a !important;
+        }
+        html.theme-tmog:not(.dark) #app-header #app-logo-badge {
+            background-color: #f4f4f5 !important;
+            color: #141416 !important;
+            border: 1px solid #e4e4e7 !important;
+            box-shadow: none !important;
+        }
+        html.theme-tmog:not(.dark) #app-header .header-action-btn {
+            background-color: #f4f4f5 !important;
+            color: #141416 !important;
+            border: 1px solid #e4e4e7 !important;
+        }
+        html.theme-tmog:not(.dark) #app-header .header-action-btn:hover {
+            background-color: #e4e4e7 !important;
+        }
+        html.theme-tmog:not(.dark) #app-header .app-icon, html.theme-tmog:not(.dark) #app-header i {
+            color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) nav {
+            background-color: #ffffff !important;
+            border-top: 1px solid #e4e4e7 !important;
+        }
+        html.theme-tmog:not(.dark) .nav-btn.text-primary {
+            color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) #tab-dashboard .bg-gradient-to-r {
+            background: linear-gradient(135deg, #ffffff 0%, #f4f4f5 100%) !important;
+            border: 1px solid #e4e4e7 !important;
+            color: #141416 !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        }
+        html.theme-tmog:not(.dark) #tab-dashboard .bg-gradient-to-r p,
+        html.theme-tmog:not(.dark) #tab-dashboard .bg-gradient-to-r span {
+            color: #52525b !important;
+        }
+        html.theme-tmog:not(.dark) #tab-dashboard .bg-gradient-to-r h2,
+        html.theme-tmog:not(.dark) #tab-dashboard .bg-gradient-to-r #dash-veh-fuel {
+            color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) #tab-dashboard .bg-gradient-to-r #dash-veh-name {
+            background-color: #e4e4e7 !important;
+            color: #141416 !important;
+            border: 1px solid #d4d4d8 !important;
+        }
+        html.theme-tmog:not(.dark) .bg-primary,
+        html.theme-tmog:not(.dark) .bg-blue-600,
+        html.theme-tmog:not(.dark) .bg-amber-600,
+        html.theme-tmog:not(.dark) .bg-green-600 {
+            background-color: #141416 !important;
+            color: #ffffff !important;
+        }
+        html.theme-tmog:not(.dark) .bg-purple-50,
+        html.theme-tmog:not(.dark) .bg-blue-50,
+        html.theme-tmog:not(.dark) .bg-amber-50,
+        html.theme-tmog:not(.dark) .bg-green-50 {
+            background-color: #ffffff !important;
+            border-color: #e4e4e7 !important;
+            color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) .text-primary,
+        html.theme-tmog:not(.dark) .text-purple-500,
+        html.theme-tmog:not(.dark) .text-purple-600,
+        html.theme-tmog:not(.dark) .text-purple-700,
+        html.theme-tmog:not(.dark) .text-blue-500,
+        html.theme-tmog:not(.dark) .text-blue-600,
+        html.theme-tmog:not(.dark) .text-blue-700,
+        html.theme-tmog:not(.dark) .text-amber-500,
+        html.theme-tmog:not(.dark) .text-amber-700,
+        html.theme-tmog:not(.dark) .text-green-500,
+        html.theme-tmog:not(.dark) .text-green-700 {
+            color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) .bg-purple-100,
+        html.theme-tmog:not(.dark) .bg-blue-100,
+        html.theme-tmog:not(.dark) .bg-amber-100,
+        html.theme-tmog:not(.dark) .bg-primary\/10,
+        html.theme-tmog:not(.dark) .bg-primary\/20 {
+            background-color: #e4e4e7 !important;
+            color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) .bg-red-100 {
+            background-color: #141416 !important;
+            color: #ffffff !important;
+        }
+        html.theme-tmog:not(.dark) .border-primary {
+            border-color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) .ring-primary {
+            --tw-ring-color: #141416 !important;
+        }
+        html.theme-tmog:not(.dark) input[type="checkbox"] {
+            accent-color: #141416 !important;
+        }
+    </style>
+</head>
+<body class="h-full bg-bgLight dark:bg-bgDark text-gray-900 dark:text-gray-100 transition-colors duration-200 flex flex-col overflow-hidden">
+
+    <!-- Top App Bar -->
+    <header id="app-header" class="bg-primary text-white shadow-md z-20 flex items-center justify-between px-4 py-3 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div id="app-logo-badge" class="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center font-bold text-lg shadow-inner">
+                <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M2 22h14"/><path d="M6 7h6v5H6z"/><path d="M15 9h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/><circle cx="19" cy="6" r="1"/></svg>
+            </div>
+            <div>
+                <h1 id="app-title" class="font-bold text-lg leading-tight">JRMVM</h1>
+                <p id="current-vehicle-subtitle" class="text-xs text-purple-100 truncate max-w-[180px]">My Car</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button id="btn-header-vehicle" onclick="openVehicleModal()" class="header-action-btn w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/10 transition active:scale-95" title="Switch Vehicle">
+                <svg class="app-icon text-base" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+            </button>
+            <button id="btn-header-theme" onclick="toggleDarkMode()" class="header-action-btn w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/10 transition active:scale-95" title="Toggle Theme">
+                <svg id="theme-icon" class="app-icon text-base" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+            </button>
+            <button id="btn-header-settings" onclick="openSettingsModal()" class="header-action-btn w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/10 transition active:scale-95" title="Settings">
+                <svg class="app-icon text-base" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container (Tabs) -->
+    <main class="flex-1 overflow-y-auto pb-24 relative hide-scrollbar">
+        
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-xl text-sm flex items-center space-x-2 transition-all duration-300 opacity-0 pointer-events-none">
+            <svg id="toast-icon" class="app-icon text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            <span id="toast-msg">Action completed successfully</span>
+        </div>
+
+        <!-- TAB 1: DASHBOARD -->
+        <section id="tab-dashboard" class="tab-content p-4 space-y-4 max-w-xl mx-auto">
+            <!-- Vehicle Quick Banner -->
+            <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 opacity-10 text-9xl">
+                    <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17H3a1 1 0 0 1-1-1v-3.2c0-.7.3-1.3.9-1.7L6 9l2.4-3.2c.4-.5 1-.8 1.6-.8h5.5c.7 0 1.4.4 1.8 1l2.2 3.5 1.8.8c.4.2.7.6.7 1.1V16a1 1 0 0 1-1 1h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M6 9h13.5"/></svg>
+                </div>
+                <div class="flex justify-between items-start z-10 relative">
+                    <div>
+                        <span id="dash-veh-name" class="text-xs font-semibold uppercase tracking-wider bg-black/20 px-2.5 py-1 rounded-full">Honda Civic 2021</span>
+                        <h2 id="dash-veh-plate" class="text-2xl font-bold mt-2">XYZ-1234</h2>
+                        <p id="dash-veh-odometer" class="text-sm text-purple-100 mt-1"><svg class="app-icon mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg> 45,200 km</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-purple-200">Fuel Type</span>
+                        <p id="dash-veh-fuel" class="font-bold text-sm">Petrol</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards Grid -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div class="flex items-center text-gray-500 dark:text-gray-400 text-xs mb-1">
+                        <svg class="app-icon text-purple-500 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg> Efficiency
+                    </div>
+                    <div id="stat-efficiency" class="text-xl font-bold text-gray-800 dark:text-white">7.8 L/100km</div>
+                    <div id="stat-efficiency-sub" class="text-[10px] text-gray-400 mt-0.5">Average consumption</div>
+                </div>
+                <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div class="flex items-center text-gray-500 dark:text-gray-400 text-xs mb-1">
+                        <svg class="app-icon text-blue-500 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg> Spending
+                    </div>
+                    <div id="stat-total-spend" class="text-xl font-bold text-gray-800 dark:text-white">$1,240.50</div>
+                    <div id="stat-spend-sub" class="text-[10px] text-gray-400 mt-0.5">Fuel & Expenses</div>
+                </div>
+                <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div class="flex items-center text-gray-500 dark:text-gray-400 text-xs mb-1">
+                        <svg class="app-icon text-amber-500 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19 8 5"/><path d="m16 5 4 14"/><path d="M12 6v2"/><path d="M12 11v2"/><path d="M12 16v2"/></svg> Distance
+                    </div>
+                    <div id="stat-total-distance" class="text-xl font-bold text-gray-800 dark:text-white">6,400 km</div>
+                    <div id="stat-distance-sub" class="text-[10px] text-gray-400 mt-0.5">Total recorded</div>
+                </div>
+                <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+                    <div class="flex items-center text-gray-500 dark:text-gray-400 text-xs mb-1">
+                        <svg class="app-icon text-purple-500 mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg> Cost
+                    </div>
+                    <div id="stat-cost-rate" class="text-xl font-bold text-gray-800 dark:text-white">-</div>
+                    <div id="stat-cost-rate-sub" class="text-[10px] text-gray-400 mt-0.5">Overall: -</div>
+                </div>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="grid grid-cols-3 gap-2 pt-1">
+                <button onclick="openFuelModal()" class="flex flex-col items-center justify-center p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/50 rounded-xl text-purple-700 dark:text-purple-400 hover:bg-purple-100 transition active:scale-95 shadow-sm">
+                    <svg class="app-icon text-lg mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M2 22h14"/><path d="M6 7h6v5H6z"/><path d="M15 9h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/><circle cx="19" cy="6" r="1"/></svg>
+                    <span class="text-xs font-semibold">Add Fuel</span>
+                </button>
+                <button onclick="openExpenseModal()" class="flex flex-col items-center justify-center p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 rounded-xl text-blue-700 dark:text-blue-400 hover:bg-blue-100 transition active:scale-95 shadow-sm">
+                    <svg class="app-icon text-lg mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+                    <span class="text-xs font-semibold">Add Expense</span>
+                </button>
+                <button onclick="openReminderModal()" class="flex flex-col items-center justify-center p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-xl text-amber-700 dark:text-amber-400 hover:bg-amber-100 transition active:scale-95 shadow-sm">
+                    <svg class="app-icon text-lg mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+                    <span class="text-xs font-semibold">Reminder</span>
+                </button>
+            </div>
+
+            <!-- Active Reminders Widget -->
+            <div class="bg-white dark:bg-surfaceDark rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-sm text-gray-800 dark:text-white flex items-center">
+                        <svg class="app-icon text-amber-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Service Reminders
+                    </h3>
+                    <button onclick="switchTab('reminders')" class="text-xs text-primary font-semibold hover:underline">View All</button>
+                </div>
+                <div id="dash-reminders-list" class="space-y-2">
+                    <!-- Dynamic Reminders -->
+                </div>
+            </div>
+
+            <!-- Recent Activity Feed -->
+            <div class="bg-white dark:bg-surfaceDark rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+                <h3 class="font-bold text-sm text-gray-800 dark:text-white mb-3 flex items-center">
+                    <svg class="app-icon text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg> Recent History
+                </h3>
+                <div id="dash-recent-list" class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <!-- Dynamic History -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: FUEL LOGS -->
+        <section id="tab-fuel" class="tab-content hidden p-4 space-y-4 max-w-xl mx-auto">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold">Fuel Fill-ups</h2>
+                <button onclick="openFuelModal()" class="bg-primary hover:bg-primaryDark text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-md transition flex items-center space-x-1.5 active:scale-95">
+                    <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> <span>Add Fuel</span>
+                </button>
+            </div>
+            <div id="fuel-logs-list" class="space-y-3">
+                <!-- Filled dynamically -->
+            </div>
+        </section>
+
+        <!-- TAB 3: EXPENSES -->
+        <section id="tab-expenses" class="tab-content hidden p-4 space-y-4 max-w-xl mx-auto">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold">Car Expenses</h2>
+                <button onclick="openExpenseModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-md transition flex items-center space-x-1.5 active:scale-95">
+                    <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> <span>Add Expense</span>
+                </button>
+            </div>
+            <div id="expenses-list" class="space-y-3"></div>
+        </section>
+
+        <!-- TAB 4: REMINDERS -->
+        <section id="tab-reminders" class="tab-content hidden p-4 space-y-4 max-w-xl mx-auto">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold">Service & Maintenance Reminders</h2>
+                <button onclick="openReminderModal()" class="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-md transition flex items-center space-x-1.5 active:scale-95">
+                    <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> <span>Add Reminder</span>
+                </button>
+            </div>
+            <div id="reminders-list" class="space-y-3"></div>
+        </section>
+
+        <!-- TAB 4: STATISTICS -->
+        <section id="tab-stats" class="tab-content hidden p-4 space-y-4 max-w-xl mx-auto">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <h2 class="text-lg font-bold">Statistics & Analytics</h2>
+                <div class="flex bg-gray-100 dark:bg-surfaceDark p-1 rounded-xl text-xs font-semibold border border-gray-200/80 dark:border-gray-800 self-start sm:self-auto">
+                    <button type="button" onclick="setStatsRange('6m')" id="btn-range-6m" class="px-2.5 py-1 rounded-lg transition bg-white dark:bg-bgDark text-primary shadow-sm">6mo</button>
+                    <button type="button" onclick="setStatsRange('12m')" id="btn-range-12m" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">12mo</button>
+                    <button type="button" onclick="setStatsRange('24m')" id="btn-range-24m" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">24mo</button>
+                    <button type="button" onclick="setStatsRange('all')" id="btn-range-all" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">All</button>
+                </div>
+            </div>
+            
+            <!-- Chart 1: Fuel Consumption Trends -->
+            <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+                <div class="flex items-center justify-between mb-3 gap-2">
+                    <h3 class="text-sm font-semibold flex items-center">
+                        <svg class="app-icon text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg> Fuel Efficiency Trend (<span id="lbl-eff-unit">L/100km</span>)
+                    </h3>
+                    <label class="flex items-center space-x-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+                        <input type="checkbox" id="chk-eff-smooth" checked onchange="toggleEffSmoothing()" class="w-3.5 h-3.5 text-primary rounded border-gray-300 dark:border-gray-600 focus:ring-primary cursor-pointer">
+                        <span>Smooth</span>
+                    </label>
+                </div>
+                <div class="relative h-60 w-full">
+                    <canvas id="chartEfficiency"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart 2: Monthly Spending -->
+            <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+                    <h3 class="text-sm font-semibold flex items-center">
+                        <svg class="app-icon text-blue-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> Monthly Spending (<span id="lbl-currency">USD</span>)
+                    </h3>
+                    <div class="flex bg-gray-100 dark:bg-bgDark p-1 rounded-xl text-xs font-semibold">
+                        <button onclick="setSpendingView('fuel')" id="btn-spend-fuel" class="px-2.5 py-1 rounded-lg transition bg-white dark:bg-surfaceDark text-primary shadow-sm">Fuel</button>
+                        <button onclick="setSpendingView('expense')" id="btn-spend-expense" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">Expenses</button>
+                        <button onclick="setSpendingView('both')" id="btn-spend-both" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">Both</button>
+                    </div>
+                </div>
+                <div class="relative h-60 w-full">
+                    <canvas id="chartSpending"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: GARAGE -->
+        <section id="tab-garage" class="tab-content hidden p-4 space-y-4 max-w-xl mx-auto">
+            <div class="flex justify-between items-center">
+                <h2 class="text-lg font-bold">Vehicle Garage</h2>
+                <button onclick="openAddVehicleModal()" class="bg-primary hover:bg-primaryDark text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-md transition flex items-center space-x-1.5 active:scale-95">
+                    <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> <span>Add Vehicle</span>
+                </button>
+            </div>
+            <div id="vehicle-list-container" class="space-y-3">
+                <!-- Vehicles populated here -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar (Android style) -->
+    <nav class="absolute bottom-0 left-0 right-0 bg-white dark:bg-surfaceDark border-t border-gray-200 dark:border-gray-800 flex justify-around items-center h-16 px-1 z-30 shadow-lg">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn flex flex-col items-center justify-center flex-1 py-1 text-primary">
+            <svg class="app-icon text-base" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            <span class="text-[9px] font-medium mt-1">Dashboard</span>
+        </button>
+        <button onclick="switchTab('fuel')" id="nav-fuel" class="nav-btn flex flex-col items-center justify-center flex-1 py-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <svg class="app-icon text-base" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M2 22h14"/><path d="M6 7h6v5H6z"/><path d="M15 9h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/><circle cx="19" cy="6" r="1"/></svg>
+            <span class="text-[9px] font-medium mt-1">Fuel</span>
+        </button>
+        <button onclick="switchTab('expenses')" id="nav-expenses" class="nav-btn flex flex-col items-center justify-center flex-1 py-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <svg class="app-icon text-base" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>
+            <span class="text-[9px] font-medium mt-1">Expenses</span>
+        </button>
+        <button onclick="switchTab('reminders')" id="nav-reminders" class="nav-btn flex flex-col items-center justify-center flex-1 py-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <svg class="app-icon text-base" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+            <span class="text-[9px] font-medium mt-1">Reminders</span>
+        </button>
+        <button onclick="switchTab('stats')" id="nav-stats" class="nav-btn flex flex-col items-center justify-center flex-1 py-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <svg class="app-icon text-base" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z"/><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/></svg>
+            <span class="text-[9px] font-medium mt-1">Stats</span>
+        </button>
+        <button onclick="switchTab('garage')" id="nav-garage" class="nav-btn flex flex-col items-center justify-center flex-1 py-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+            <svg class="app-icon text-base" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+            <span class="text-[9px] font-medium mt-1">Garage</span>
+        </button>
+    </nav>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- Modal: Add Fuel Fill-up -->
+    <div id="modal-fuel" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-surfaceDark rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="fuel-modal-title" class="font-bold text-lg flex items-center"><svg class="app-icon text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M2 22h14"/><path d="M6 7h6v5H6z"/><path d="M15 9h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/><circle cx="19" cy="6" r="1"/></svg> Add Fuel Fill-up</h3>
+                <button onclick="closeModal('modal-fuel')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"><svg class="app-icon text-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+            <form id="form-fuel" onsubmit="saveFuelLog(event)" class="space-y-3.5">
+                <input type="hidden" id="fuel-id">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Date & Time</label>
+                    <input type="datetime-local" id="fuel-date" required class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Odometer (<span id="lbl-dist">km</span>)</label>
+                        <input type="number" step="1" id="fuel-odometer" required placeholder="e.g. 45200" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary" oninput="calcPricePerUnit()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Quantity (<span id="lbl-vol">Liters</span>)</label>
+                        <input type="number" step="0.01" id="fuel-qty" required placeholder="e.g. 45.5" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary" oninput="calcPricePerUnit()">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Total Cost (<span id="lbl-curr-symbol">$</span>)</label>
+                        <input type="number" step="0.01" id="fuel-cost" required placeholder="e.g. 75.00" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary" oninput="calcPricePerUnit()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Price / Unit</label>
+                        <input type="text" id="fuel-unit-price" readonly disabled placeholder="Auto-calculated" class="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm text-gray-500 cursor-not-allowed">
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4 py-1">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="fuel-full" checked class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary">
+                        <span class="text-xs font-medium">Full Tank</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" id="fuel-missed" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary">
+                        <span class="text-xs font-medium">Missed previous fill</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Station / Location (Optional)</label>
+                    <input type="text" id="fuel-station" placeholder="e.g. Shell Station #402" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Notes (Optional)</label>
+                    <textarea id="fuel-notes" rows="2" placeholder="Driving conditions, fuel grade..." class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary resize-none"></textarea>
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeModal('modal-fuel')" class="flex-1 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="flex-1 bg-primary hover:bg-primaryDark text-white py-2.5 rounded-xl text-sm font-semibold shadow-md transition">Save Log</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add Expense -->
+    <div id="modal-expense" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-surfaceDark rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-100 dark:border-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="exp-modal-title" class="font-bold text-lg flex items-center"><svg class="app-icon text-blue-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg> Add Car Expense</h3>
+                <button onclick="closeModal('modal-expense')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"><svg class="app-icon text-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+            <form id="form-expense" onsubmit="saveExpense(event)" class="space-y-3.5">
+                <input type="hidden" id="exp-id">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Date</label>
+                    <input type="date" id="exp-date" required class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Category</label>
+                    <select id="exp-category" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                        <option value="Maintenance">Maintenance / Repair</option>
+                        <option value="Insurance">Insurance</option>
+                        <option value="Parking">Parking</option>
+                        <option value="Tolls">Tolls</option>
+                        <option value="Car Wash">Car Wash</option>
+                        <option value="Fine">Traffic Fine</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Cost (<span id="lbl-curr-symbol-2">$</span>)</label>
+                        <input type="number" step="0.01" id="exp-cost" required placeholder="e.g. 150.00" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Odometer (<span id="lbl-dist-2">km</span>)</label>
+                        <input type="number" step="1" id="exp-odometer" placeholder="Optional" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Description / Title</label>
+                    <input type="text" id="exp-desc" required placeholder="e.g. Oil change & filter replacement" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeModal('modal-expense')" class="flex-1 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md transition">Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit Reminder -->
+    <div id="modal-reminder" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-surfaceDark rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-100 dark:border-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="rem-modal-title" class="font-bold text-lg flex items-center"><svg class="app-icon text-amber-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg> Add Service Reminder</h3>
+                <button onclick="closeModal('modal-reminder')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"><svg class="app-icon text-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+            <form id="form-reminder" onsubmit="saveReminder(event)" class="space-y-3.5">
+                <input type="hidden" id="rem-id">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Reminder Title</label>
+                    <input type="text" id="rem-title" required placeholder="e.g. Oil Change, Tire Rotation" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Due Date</label>
+                        <input type="date" id="rem-date" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Due Odometer (<span id="lbl-dist-3">km</span>)</label>
+                        <input type="number" step="1" id="rem-odometer" placeholder="e.g. 50000" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                    </div>
+                </div>
+                <div class="bg-gray-50 dark:bg-bgDark p-3 rounded-xl border border-gray-200 dark:border-gray-700 space-y-3">
+                    <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center justify-between">
+                        <span><svg class="app-icon mr-1.5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg> Custom Recurrence (Whichever comes first)</span>
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Every (Months)</label>
+                            <input type="number" min="0" step="1" id="rem-interval-months" placeholder="e.g. 6" class="w-full bg-white dark:bg-surfaceDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-gray-500 dark:text-gray-400 mb-1">Every (<span id="lbl-dist-5">km</span>)</label>
+                            <input type="number" min="0" step="1" id="rem-interval-dist" placeholder="e.g. 5000" class="w-full bg-white dark:bg-surfaceDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-primary">
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Notes</label>
+                    <textarea id="rem-notes" rows="2" placeholder="Specific parts or instructions..." class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary resize-none"></textarea>
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeModal('modal-reminder')" class="flex-1 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md transition">Save Reminder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+        <!-- Modal: Complete Service Reminder (Confirmation) -->
+    <div id="modal-complete-reminder" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-surfaceDark rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-100 dark:border-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg flex items-center"><svg class="app-icon text-green-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> Confirm Service Completion</h3>
+                <button onclick="closeModal('modal-complete-reminder')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"><svg class="app-icon text-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+            <form id="form-complete-reminder" onsubmit="confirmCompleteReminder(event)" class="space-y-3.5">
+                <input type="hidden" id="comp-rem-id">
+                <div id="comp-rem-title-display" class="text-xs font-semibold text-primary"></div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Date Completed</label>
+                        <input type="date" id="comp-date" required class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Odometer (<span id="lbl-dist-6">km</span>)</label>
+                        <input type="number" step="1" id="comp-odometer" required class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                    </div>
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeModal('modal-complete-reminder')" class="flex-1 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md transition">Confirm & Advance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Vehicle Garage / Switcher -->
+    <div id="modal-vehicle-switcher" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-surfaceDark rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-100 dark:border-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg flex items-center"><svg class="app-icon text-primary mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg> Select Active Vehicle</h3>
+                <button onclick="closeModal('modal-vehicle-switcher')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"><svg class="app-icon text-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+            <div id="modal-vehicle-list" class="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                <!-- Vehicle items -->
+            </div>
+            <button onclick="closeModal('modal-vehicle-switcher'); openAddVehicleModal();" class="w-full border-2 border-dashed border-gray-300 dark:border-gray-700 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition flex items-center justify-center space-x-2">
+                <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> <span>Add New Vehicle</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit Vehicle Form -->
+    <div id="modal-vehicle-form" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-surfaceDark rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-100 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="veh-modal-title" class="font-bold text-lg flex items-center"><svg class="app-icon text-primary mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17H3a1 1 0 0 1-1-1v-3.2c0-.7.3-1.3.9-1.7L6 9l2.4-3.2c.4-.5 1-.8 1.6-.8h5.5c.7 0 1.4.4 1.8 1l2.2 3.5 1.8.8c.4.2.7.6.7 1.1V16a1 1 0 0 1-1 1h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M6 9h13.5"/></svg> Add Vehicle</h3>
+                <button onclick="closeModal('modal-vehicle-form')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"><svg class="app-icon text-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+            <form id="form-vehicle" onsubmit="saveVehicle(event)" class="space-y-3.5">
+                <input type="hidden" id="veh-id">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Vehicle Name / Make & Model</label>
+                    <input type="text" id="veh-name" required placeholder="e.g. 2025 Hyundai Santa Fe Hybrid" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">License Plate</label>
+                        <input type="text" id="veh-plate" required placeholder="e.g. XYZ-1234" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Fuel Type</label>
+                        <select id="veh-fueltype" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                            <option value="Hybrid">Hybrid</option>
+                            <option value="Petrol">Petrol</option>
+                            <option value="Diesel">Diesel</option>
+                            <option value="EV">Electric (EV)</option>
+                            <option value="LPG">LPG</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Current Odometer (<span id="lbl-dist-4">km</span>)</label>
+                    <input type="number" step="1" id="veh-odometer" required placeholder="e.g. 45200" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                </div>
+                
+                <!-- Vehicle Photo & Color Match Section -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Vehicle Photo</label>
+                    <div class="flex items-center space-x-3">
+                        <div id="veh-photo-preview" class="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 flex items-center justify-center overflow-hidden shrink-0 text-gray-400">
+                            <svg class="app-icon text-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+                        </div>
+                        <div class="flex-1">
+                            <input type="file" id="veh-photo-input" accept="image/*" onchange="handleVehiclePhotoUpload(event)" class="w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+                            <input type="hidden" id="veh-photo-data">
+                            <p class="text-[10px] text-gray-400 mt-1">Upload a photo to match your vehicle's paint color.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400">Vehicle Theme Color</label>
+                        <button type="button" onclick="colorMatchFromPhoto()" id="btn-color-match" class="text-[10px] text-primary font-bold hover:underline flex items-center space-x-1" disabled title="Upload a photo first">
+                            <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg> <span>Color Match from Photo</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="color" id="veh-color" value="#10B981" class="w-10 h-10 rounded-xl border border-gray-300 dark:border-gray-700 bg-transparent cursor-pointer p-1" oninput="document.getElementById('veh-color-text').value=this.value">
+                        <input type="text" id="veh-color-text" value="#10B981" placeholder="#10B981" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-primary" oninput="document.getElementById('veh-color').value=this.value">
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 pt-2">
+                    <button type="button" onclick="closeModal('modal-vehicle-form')" class="flex-1 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-sm font-semibold transition">Cancel</button>
+                    <button type="submit" class="flex-1 bg-primary hover:bg-primaryDark text-white py-2.5 rounded-xl text-sm font-semibold shadow-md transition">Save Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Settings & Backup -->
+    <div id="modal-settings" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-surfaceDark rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-100 dark:border-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg flex items-center"><svg class="app-icon text-primary mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> App Settings</h3>
+                <button onclick="closeModal('modal-settings')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"><svg class="app-icon text-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Measurement System</label>
+                    <select id="settings-units" onchange="updateSettings()" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                        <option value="metric">Metric (km, Liters, L/100km)</option>
+                        <option value="imperial">Imperial (miles, Gallons, MPG)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Currency Symbol</label>
+                    <select id="settings-currency" onchange="updateSettings()" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                        <option value="$">$ (USD)</option>
+                        <option value="€">€ (EUR)</option>
+                        <option value="£">£ (GBP)</option>
+                        <option value="¥">¥ (JPY)</option>
+                        <option value="₹">₹ (INR)</option>
+                        <option value="C$">C$ (CAD)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">Color Theme</label>
+                    <select id="settings-theme-mode" onchange="updateSettings()" class="w-full bg-gray-50 dark:bg-bgDark border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-primary">
+                        <option value="tmog">TMOG (Monochrome Black &amp; White)</option>
+                        <option value="cookie">Cookie (Purple &amp; Blue)</option>
+                        <option value="vehicle">Match Active Vehicle Color</option>
+                    </select>
+                </div>
+                <hr class="border-gray-200 dark:border-gray-700 my-2">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">JSON Backup & Restore</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="exportData()" class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 py-2.5 px-3 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5">
+                            <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> <span>Export JSON</span>
+                        </button>
+                        <label class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 py-2.5 px-3 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5 cursor-pointer">
+                            <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> <span>Import JSON</span>
+                            <input type="file" id="import-file" accept=".json" onchange="importData(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+                <hr class="border-gray-200 dark:border-gray-700 my-2">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Fuelio CSV Import & Export</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="exportFuelioCSV()" class="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 py-2.5 px-3 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5 hover:bg-green-100">
+                            <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg> <span>Export Fuelio</span>
+                        </button>
+                        <label class="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 py-2.5 px-3 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5 hover:bg-green-100 cursor-pointer">
+                            <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/></svg> <span>Import Fuelio</span>
+                            <input type="file" accept=".csv" onchange="importFuelioCSV(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6">
+                <button onclick="closeModal('modal-settings')" class="w-full bg-primary hover:bg-primaryDark text-white py-2.5 rounded-xl text-sm font-semibold transition shadow-md">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        /* ==================== INLINE VECTOR ICONS ==================== */
+        const APP_ICONS = {
+            'gas-pump': `<path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M2 22h14"/><path d="M6 7h6v5H6z"/><path d="M15 9h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/><circle cx="19" cy="6" r="1"/>`,
+            'car': `<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>`,
+            'car-side': `<path d="M5 17H3a1 1 0 0 1-1-1v-3.2c0-.7.3-1.3.9-1.7L6 9l2.4-3.2c.4-.5 1-.8 1.6-.8h5.5c.7 0 1.4.4 1.8 1l2.2 3.5 1.8.8c.4.2.7.6.7 1.1V16a1 1 0 0 1-1 1h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M6 9h13.5"/>`,
+            'moon': `<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>`,
+            'sun': `<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>`,
+            'gear': `<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>`,
+            'circle-check': `<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>`,
+            'triangle-exclamation': `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>`,
+            'gauge': `<path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>`,
+            'chart-line': `<path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>`,
+            'wallet': `<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>`,
+            'road': `<path d="M4 19 8 5"/><path d="m16 5 4 14"/><path d="M12 6v2"/><path d="M12 11v2"/><path d="M12 16v2"/>`,
+            'coins': `<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>`,
+            'receipt': `<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/>`,
+            'bell': `<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>`,
+            'clock-rotate-left': `<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>`,
+            'plus': `<path d="M5 12h14"/><path d="M12 5v14"/>`,
+            'chart-column': `<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>`,
+            'house': `<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>`,
+            'chart-pie': `<path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z"/><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>`,
+            'xmark': `<path d="M18 6 6 18"/><path d="m6 6 12 12"/>`,
+            'rotate': `<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>`,
+            'wand-magic-sparkles': `<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>`,
+            'download': `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>`,
+            'upload': `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>`,
+            'file-csv': `<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/>`,
+            'file-import': `<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 18v-6"/><path d="m9 15 3-3 3 3"/>`,
+            'location-dot': `<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>`,
+            'pen': `<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/>`,
+            'trash': `<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>`,
+            'calendar': `<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>`
+        };
+        function getIconSvg(name, extraClass = '') {
+            const inner = APP_ICONS[name] || '';
+            const cls = ('app-icon ' + extraClass).trim();
+            return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+        }
+
+        /* ==================== STATE MANAGEMENT ==================== */
+        let appState = {
+            darkMode: true,
+            units: 'metric', // 'metric' or 'imperial'
+            currency: '$',
+            themeMode: 'tmog', // 'tmog', 'cookie', or 'vehicle'
+            activeVehicleId: 'veh_1',
+            spendingView: 'fuel',
+            statsRange: '6m',
+            effSmooth: true,
+            vehicles: [
+                {
+                    id: 'veh_1',
+                    name: 'Honda Civic 2021',
+                    plate: 'XYZ-1234',
+                    fuelType: 'Petrol',
+                    odometer: 45200
+                }
+            ],
+            fuelLogs: [
+                {
+                    id: 'fuel_1',
+                    vehicleId: 'veh_1',
+                    date: '2026-04-01T08:30',
+                    odometer: 44500,
+                    qty: 40.0,
+                    cost: 68.00,
+                    full: true,
+                    missed: false,
+                    station: 'Shell',
+                    notes: 'Highway driving'
+                },
+                {
+                    id: 'fuel_2',
+                    vehicleId: 'veh_1',
+                    date: '2026-04-15T14:15',
+                    odometer: 44850,
+                    qty: 35.0,
+                    cost: 61.25,
+                    full: true,
+                    missed: false,
+                    station: 'BP',
+                    notes: ''
+                },
+                {
+                    id: 'fuel_3',
+                    vehicleId: 'veh_1',
+                    date: '2026-05-02T09:00',
+                    odometer: 45200,
+                    qty: 38.2,
+                    cost: 65.50,
+                    full: true,
+                    missed: false,
+                    station: 'Exxon',
+                    notes: 'City commute'
+                }
+            ],
+            expenses: [
+                {
+                    id: 'exp_1',
+                    vehicleId: 'veh_1',
+                    date: '2026-04-10',
+                    category: 'Parking',
+                    cost: 15.00,
+                    odometer: 44600,
+                    desc: 'Downtown underground parking'
+                },
+                {
+                    id: 'exp_2',
+                    vehicleId: 'veh_1',
+                    date: '2026-04-20',
+                    category: 'Car Wash',
+                    cost: 20.00,
+                    odometer: 44900,
+                    desc: 'Full service wash & vacuum'
+                }
+            ],
+            reminders: [
+                {
+                    id: 'rem_1',
+                    vehicleId: 'veh_1',
+                    title: 'Oil Change & Filter',
+                    date: '2026-06-01',
+                    odometer: 50000,
+                    notes: 'Use synthetic 5W-30 oil',
+                    completed: false
+                },
+                {
+                    id: 'rem_2',
+                    vehicleId: 'veh_1',
+                    title: 'Annual Insurance Renewal',
+                    date: '2026-07-15',
+                    odometer: null,
+                    notes: 'Compare quotes from GEICO & Progressive',
+                    completed: false
+                }
+            ]
+        };
+
+        let chartEfficiencyInstance = null;
+        let chartSpendingInstance = null;
+
+        /* ==================== INITIALIZATION ==================== */
+        function setDefaultFuelDateTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('fuel-date').value = `${year}-${month}-${day}T${hours}:${mins}`;
+        }
+
+        window.onload = function() {
+            loadFromLocalStorage();
+            applyTheme();
+            updateUnitLabels();
+            switchTab('dashboard');
+            renderAll();
+            
+            setDefaultFuelDateTime();
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            document.getElementById('exp-date').value = `${year}-${month}-${day}`;
+        };
+
+        function saveToLocalStorage() {
+            localStorage.setItem('jrmvm_state_v1', JSON.stringify(appState));
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('jrmvm_state_v1');
+            if (saved) {
+                try {
+                    appState = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Failed to parse storage', e);
+                }
+            }
+        }
+
+        /* ==================== UI NAVIGATION & THEME ==================== */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-primary');
+                btn.classList.add('text-gray-400');
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const navBtn = document.getElementById(`nav-${tabId}`);
+            if (navBtn) {
+                navBtn.classList.remove('text-gray-400');
+                navBtn.classList.add('text-primary');
+            }
+            applyThemeColors();
+
+            // Scroll main container to top
+            document.querySelector('main').scrollTop = 0;
+
+            if (tabId === 'stats') {
+                setTimeout(renderCharts, 50);
+            }
+        }
+
+
+
+        function toggleDarkMode() {
+            appState.darkMode = !appState.darkMode;
+            applyTheme();
+            saveToLocalStorage();
+            if(!document.getElementById('tab-stats').classList.contains('hidden')) {
+                renderCharts();
+            }
+        }
+
+        
+
+        function getContrastTextColor(hexColor) {
+            // Remove # if present
+            let hex = hexColor.replace('#', '');
+            if (hex.length === 3) {
+                hex = hex.split('').map(c => c + c).join('');
+            }
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            // YIQ formula for perceived brightness
+            const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+            return yiq >= 128 ? '#1F2937' : '#FFFFFF';
+        }
+
+        function hexToRgba(hex, alpha) {
+            let c = hex.replace('#', '');
+            if (c.length === 3) c = c.split('').map(char => char + char).join('');
+            const num = parseInt(c, 16);
+            return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+        }
+
+        
+        function adjustColorForChart(hexColor) {
+            if (!appState.darkMode) return hexColor;
+            
+            let hex = hexColor.replace('#', '');
+            if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+            
+            let r = parseInt(hex.substr(0, 2), 16);
+            let g = parseInt(hex.substr(2, 2), 16);
+            let b = parseInt(hex.substr(4, 2), 16);
+            
+            const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+            
+            // If the color is very dark, lighten it by blending with white
+            if (yiq < 120) {
+                const blend = 0.5; // 50% lighter
+                r = Math.round(r + (255 - r) * blend);
+                g = Math.round(g + (255 - g) * blend);
+                b = Math.round(b + (255 - b) * blend);
+                return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+            }
+            return hexColor;
+        }
+
+        function getNormalizedThemeMode() {
+            const mode = appState.themeMode || 'tmog';
+            if (mode === 'default') return 'cookie';
+            return mode;
+        }
+
+        function getActivePrimaryColor() {
+            const mode = getNormalizedThemeMode();
+            if (mode === 'tmog') {
+                return appState.darkMode ? '#FFFFFF' : '#141416';
+            }
+            if (mode === 'vehicle') {
+                const activeVeh = appState.vehicles.find(v => v.id === appState.activeVehicleId);
+                if (activeVeh && activeVeh.color) return activeVeh.color;
+            }
+            return '#7C3AED'; // Cookie purple duochrome
+        }
+
+        function resetInlineThemeStyles() {
+            const headerEl = document.querySelector('header');
+            if (headerEl) {
+                headerEl.style.backgroundColor = '';
+                headerEl.style.color = '';
+                headerEl.querySelectorAll('p, span, i, svg, h1').forEach(el => {
+                    el.style.color = '';
+                });
+            }
+            const dashBanner = document.querySelector('#tab-dashboard .bg-gradient-to-r');
+            if (dashBanner) {
+                dashBanner.style.background = '';
+                dashBanner.style.color = '';
+                dashBanner.querySelectorAll('p, span, h2').forEach(el => {
+                    el.style.color = '';
+                });
+            }
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.style.backgroundColor = '';
+                el.style.color = '';
+            });
+            document.querySelectorAll('.bg-primary').forEach(el => {
+                el.style.backgroundColor = '';
+                el.style.color = '';
+            });
+            document.querySelectorAll('button.bg-primary, .text-primary').forEach(el => {
+                if (el.tagName === 'BUTTON') {
+                    el.style.backgroundColor = '';
+                    el.style.color = '';
+                }
+            });
+        }
+
+        function applyThemeColors() {
+            const html = document.documentElement;
+            const mode = getNormalizedThemeMode();
+            resetInlineThemeStyles();
+
+            if (mode === 'tmog') {
+                html.classList.add('theme-tmog');
+                html.style.setProperty('--primary-color', appState.darkMode ? '#FFFFFF' : '#141416');
+                html.style.setProperty('--primary-text', appState.darkMode ? '#0b0c0c' : '#FFFFFF');
+            } else {
+                html.classList.remove('theme-tmog');
+                const primaryColor = getActivePrimaryColor();
+                const textColor = getContrastTextColor(primaryColor);
+
+                html.style.setProperty('--primary-color', primaryColor);
+                html.style.setProperty('--primary-text', textColor);
+
+                // 1. Update Header background & text
+                const headerEl = document.querySelector('header');
+                if (headerEl) {
+                    headerEl.style.backgroundColor = primaryColor;
+                    headerEl.style.color = textColor;
+                    headerEl.querySelectorAll('p, span, i, svg, h1').forEach(el => {
+                        if (!el.classList.contains('no-theme-tint')) {
+                            el.style.color = textColor === '#FFFFFF' ? 'rgba(255,255,255,0.9)' : 'rgba(31,41,55,0.85)';
+                        }
+                    });
+                    const titleEl = headerEl.querySelector('h1');
+                    if (titleEl) titleEl.style.color = textColor;
+                }
+
+                // 2. Update Dashboard Vehicle Banner (keep signature indigo->purple->blue gradient in Cookie mode)
+                const dashBanner = document.querySelector('#tab-dashboard .bg-gradient-to-r');
+                if (dashBanner && mode === 'vehicle') {
+                    dashBanner.style.background = `linear-gradient(135deg, ${primaryColor}, ${hexToRgba(primaryColor, 0.85)})`;
+                    dashBanner.style.color = textColor;
+                    dashBanner.querySelectorAll('p, span, h2').forEach(el => {
+                        el.style.color = textColor;
+                    });
+                }
+
+                // 3. Update elements with class 'bg-primary' or primary accents
+                document.querySelectorAll('.bg-primary').forEach(el => {
+                    el.style.backgroundColor = primaryColor;
+                    el.style.color = textColor;
+                });
+
+                // 4. Update primary buttons (excluding bottom nav buttons)
+                document.querySelectorAll('button.bg-primary, .text-primary:not(.nav-btn)').forEach(el => {
+                    if (el.tagName === 'BUTTON') {
+                        el.style.backgroundColor = primaryColor;
+                        el.style.color = textColor;
+                    }
+                });
+
+                // 5. Update Active Navigation icon/text (keep transparent background)
+                const activeNav = document.querySelector('.nav-btn.text-primary');
+                if (activeNav) {
+                    activeNav.style.backgroundColor = '';
+                    activeNav.style.color = primaryColor;
+                }
+            }
+
+            // Re-render charts if visible so palette switches cleanly
+            if (!document.getElementById('tab-stats').classList.contains('hidden')) {
+                renderCharts();
+            }
+        }
+
+        function applyTheme() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById('theme-icon');
+            if (appState.darkMode) {
+                html.classList.add('dark');
+                themeIcon.outerHTML = getIconSvg("sun", "text-base text-amber-300").replace("<svg ", "<svg id=\"theme-icon\" ");
+            } else {
+                html.classList.remove('dark');
+                themeIcon.outerHTML = getIconSvg("moon", "text-base").replace("<svg ", "<svg id=\"theme-icon\" ");
+            }
+            document.getElementById('settings-currency').value = appState.currency;
+            document.getElementById('settings-units').value = appState.units;
+            const themeModeEl = document.getElementById('settings-theme-mode');
+            if (themeModeEl) themeModeEl.value = getNormalizedThemeMode();
+            applyThemeColors();
+        }
+
+        function updateSettings() {
+            appState.units = document.getElementById('settings-units').value;
+            appState.currency = document.getElementById('settings-currency').value;
+            const themeModeEl = document.getElementById('settings-theme-mode');
+            if (themeModeEl) {
+                const prevMode = getNormalizedThemeMode();
+                appState.themeMode = themeModeEl.value;
+                // Automatically enable dark mode when switching into TMOG so the authentic dark monochrome theme displays immediately
+                if (appState.themeMode === 'tmog' && prevMode !== 'tmog') {
+                    appState.darkMode = true;
+                }
+            }
+            saveToLocalStorage();
+            updateUnitLabels();
+            applyTheme();
+            renderAll();
+            showToast('Settings updated');
+        }
+
+        function updateUnitLabels() {
+            const isMetric = appState.units === 'metric';
+            const dist = isMetric ? 'km' : 'mi';
+            const vol = isMetric ? 'Liters' : 'Gallons';
+            const eff = isMetric ? 'L/100km' : 'MPG';
+
+            ['lbl-dist', 'lbl-dist-2', 'lbl-dist-3', 'lbl-dist-4', 'lbl-dist-5', 'lbl-dist-6'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerText = dist;
+            });
+            ['lbl-vol'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerText = vol;
+            });
+            ['lbl-eff-unit'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerText = eff;
+            });
+            ['lbl-curr-symbol', 'lbl-curr-symbol-2'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.innerText = appState.currency;
+            });
+            document.getElementById('lbl-currency').innerText = appState.currency === '$' ? 'USD' : appState.currency;
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMsg.innerText = msg;
+            toastIcon.outerHTML = getIconSvg(isError ? "triangle-exclamation" : "circle-check", isError ? "text-red-400" : "text-purple-400").replace("<svg ", "<svg id=\"toast-icon\" ");
+            
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
+
+        /* ==================== MODAL CONTROLS ==================== */
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function openFuelModal() {
+            document.getElementById('form-fuel').reset();
+            document.getElementById('fuel-id').value = '';
+            setDefaultFuelDateTime();
+            // set current vehicle odometer default
+            const veh = appState.vehicles.find(v => v.id === appState.activeVehicleId);
+            if(veh) document.getElementById('fuel-odometer').value = veh.odometer;
+            document.getElementById('fuel-modal-title').innerHTML = '<svg class="app-icon text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M2 22h14"/><path d="M6 7h6v5H6z"/><path d="M15 9h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/><circle cx="19" cy="6" r="1"/></svg> Add Fuel Fill-up';
+            openModal('modal-fuel');
+        }
+
+        function openExpenseModal() {
+            document.getElementById('form-expense').reset();
+            document.getElementById('exp-id').value = '';
+            const veh = appState.vehicles.find(v => v.id === appState.activeVehicleId);
+            if(veh) document.getElementById('exp-odometer').value = veh.odometer;
+            document.getElementById('exp-modal-title').innerHTML = '<svg class="app-icon text-blue-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg> Add Car Expense';
+            openModal('modal-expense');
+        }
+
+        function openReminderModal() {
+            document.getElementById('form-reminder').reset();
+            document.getElementById('rem-id').value = '';
+            document.getElementById('rem-modal-title').innerHTML = '<svg class="app-icon text-amber-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg> Add Service Reminder';
+            openModal('modal-reminder');
+        }
+
+        function editReminder(id) {
+            const r = appState.reminders.find(rem => rem.id === id);
+            if(!r) return;
+            document.getElementById('rem-id').value = r.id;
+            document.getElementById('rem-title').value = r.title;
+            document.getElementById('rem-date').value = r.date || '';
+            document.getElementById('rem-odometer').value = r.odometer || '';
+            document.getElementById('rem-interval-months').value = r.intervalMonths || '';
+            document.getElementById('rem-interval-dist').value = r.intervalDist || '';
+            document.getElementById('rem-notes').value = r.notes || '';
+            document.getElementById('rem-modal-title').innerHTML = '<svg class="app-icon text-amber-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg> Edit Service Reminder';
+            openModal('modal-reminder');
+        }
+
+        function formatRecurrence(r) {
+            let parts = [];
+            if (r.intervalMonths > 0) parts.push(`${r.intervalMonths} mo`);
+            if (r.intervalDist > 0) parts.push(`${r.intervalDist.toLocaleString()} ${appState.units === 'metric' ? 'km' : 'mi'}`);
+            return parts.length > 0 ? `Every ${parts.join(' or ')}` : '';
+        }
+
+        
+        function editFuel(id) {
+            const f = appState.fuelLogs.find(log => log.id === id);
+            if(!f) return;
+            document.getElementById('fuel-id').value = f.id;
+            document.getElementById('fuel-date').value = f.date;
+            document.getElementById('fuel-odometer').value = f.odometer;
+            document.getElementById('fuel-qty').value = f.qty;
+            document.getElementById('fuel-cost').value = f.cost;
+            document.getElementById('fuel-full').checked = f.full;
+            document.getElementById('fuel-missed').checked = f.missed;
+            document.getElementById('fuel-station').value = f.station || '';
+            document.getElementById('fuel-notes').value = f.notes || '';
+            calcPricePerUnit();
+            document.getElementById('fuel-modal-title').innerHTML = '<svg class="app-icon text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M2 22h14"/><path d="M6 7h6v5H6z"/><path d="M15 9h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/><circle cx="19" cy="6" r="1"/></svg> Edit Fuel Fill-up';
+            openModal('modal-fuel');
+        }
+
+        function editExpense(id) {
+            const ex = appState.expenses.find(e => e.id === id);
+            if(!ex) return;
+            document.getElementById('exp-id').value = ex.id;
+            document.getElementById('exp-date').value = ex.date;
+            document.getElementById('exp-category').value = ex.category;
+            document.getElementById('exp-cost').value = ex.cost;
+            document.getElementById('exp-odometer').value = ex.odometer || '';
+            document.getElementById('exp-desc').value = ex.desc;
+            document.getElementById('exp-modal-title').innerHTML = '<svg class="app-icon text-blue-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg> Edit Car Expense';
+            openModal('modal-expense');
+        }
+
+        function openVehicleModal() {
+            renderVehicleSwitcherList();
+            openModal('modal-vehicle-switcher');
+        }
+
+        function openAddVehicleModal() {
+            document.getElementById('form-vehicle').reset();
+            document.getElementById('veh-id').value = '';
+            document.getElementById('veh-photo-data').value = '';
+            document.getElementById('veh-photo-preview').innerHTML = `<svg class="app-icon text-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`;
+            document.getElementById('btn-color-match').disabled = true;
+            document.getElementById('veh-color').value = '#10B981';
+            document.getElementById('veh-color-text').value = '#10B981';
+            document.getElementById('veh-modal-title').innerHTML = '<svg class="app-icon text-primary mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17H3a1 1 0 0 1-1-1v-3.2c0-.7.3-1.3.9-1.7L6 9l2.4-3.2c.4-.5 1-.8 1.6-.8h5.5c.7 0 1.4.4 1.8 1l2.2 3.5 1.8.8c.4.2.7.6.7 1.1V16a1 1 0 0 1-1 1h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M6 9h13.5"/></svg> Add Vehicle';
+            openModal('modal-vehicle-form');
+        }
+
+        function openSettingsModal() {
+            openModal('modal-settings');
+        }
+
+        function calcPricePerUnit() {
+            const cost = parseFloat(document.getElementById('fuel-cost').value) || 0;
+            const qty = parseFloat(document.getElementById('fuel-qty').value) || 0;
+            const priceField = document.getElementById('fuel-unit-price');
+            if (qty > 0 && cost > 0) {
+                priceField.value = `${appState.currency}${(cost / qty).toFixed(2)}`;
+            } else {
+                priceField.value = '';
+            }
+        }
+
+        /* ==================== DATA OPERATIONS ==================== */
+        function saveFuelLog(e) {
+            e.preventDefault();
+            const id = document.getElementById('fuel-id').value || 'fuel_' + Date.now();
+            const date = document.getElementById('fuel-date').value;
+            const odometer = parseInt(document.getElementById('fuel-odometer').value);
+            const qty = parseFloat(document.getElementById('fuel-qty').value);
+            const cost = parseFloat(document.getElementById('fuel-cost').value);
+            const full = document.getElementById('fuel-full').checked;
+            const missed = document.getElementById('fuel-missed').checked;
+            const station = document.getElementById('fuel-station').value;
+            const notes = document.getElementById('fuel-notes').value;
+
+            const log = { id, vehicleId: appState.activeVehicleId, date, odometer, qty, cost, full, missed, station, notes };
+
+            const index = appState.fuelLogs.findIndex(l => l.id === id);
+            if (index >= 0) {
+                appState.fuelLogs[index] = log;
+            } else {
+                appState.fuelLogs.push(log);
+            }
+
+            // Update vehicle odometer if higher
+            const veh = appState.vehicles.find(v => v.id === appState.activeVehicleId);
+            if (veh && odometer > veh.odometer) {
+                veh.odometer = odometer;
+            }
+
+            appState.fuelLogs.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            saveToLocalStorage();
+            closeModal('modal-fuel');
+            renderAll();
+            showToast('Fuel fill-up saved successfully');
+        }
+
+        function saveExpense(e) {
+            e.preventDefault();
+            const id = document.getElementById('exp-id').value || 'exp_' + Date.now();
+            const date = document.getElementById('exp-date').value;
+            const category = document.getElementById('exp-category').value;
+            const cost = parseFloat(document.getElementById('exp-cost').value);
+            const odometer = parseInt(document.getElementById('exp-odometer').value) || null;
+            const desc = document.getElementById('exp-desc').value;
+
+            const expense = { id, vehicleId: appState.activeVehicleId, date, category, cost, odometer, desc };
+
+            const index = appState.expenses.findIndex(ex => ex.id === id);
+            if (index >= 0) {
+                appState.expenses[index] = expense;
+            } else {
+                appState.expenses.push(expense);
+            }
+
+            appState.expenses.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            saveToLocalStorage();
+            closeModal('modal-expense');
+            renderAll();
+            showToast('Expense recorded successfully');
+        }
+
+        function saveReminder(e) {
+            e.preventDefault();
+            const id = document.getElementById('rem-id').value || 'rem_' + Date.now();
+            const title = document.getElementById('rem-title').value;
+            const date = document.getElementById('rem-date').value || null;
+            const odometer = parseInt(document.getElementById('rem-odometer').value) || null;
+            const intervalMonths = parseInt(document.getElementById('rem-interval-months').value) || 0;
+            const intervalDist = parseInt(document.getElementById('rem-interval-dist').value) || 0;
+            const notes = document.getElementById('rem-notes').value;
+
+            const reminder = { id, vehicleId: appState.activeVehicleId, title, date, odometer, intervalMonths, intervalDist, notes, completed: false };
+
+            const index = appState.reminders.findIndex(r => r.id === id);
+            if (index >= 0) {
+                reminder.completed = appState.reminders[index].completed;
+                appState.reminders[index] = reminder;
+            } else {
+                appState.reminders.push(reminder);
+            }
+
+            saveToLocalStorage();
+            closeModal('modal-reminder');
+            renderAll();
+            showToast('Service reminder saved');
+        }
+
+        function toggleReminderComplete(id) {
+            const rem = appState.reminders.find(r => r.id === id);
+            if (!rem) return;
+
+            // If checking it as complete (and not currently completed)
+            if (!rem.completed) {
+                // Open confirmation modal for completion date and odometer
+                document.getElementById('comp-rem-id').value = rem.id;
+                document.getElementById('comp-rem-title-display').innerHTML = `<svg class="app-icon mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg> Completing: <strong>${rem.title}</strong>`;
+                
+                // Default completion date to today
+                const today = new Date().toISOString().slice(0, 10);
+                document.getElementById('comp-date').value = today;
+
+                // Default completion odometer to vehicle's current odometer or reminder odometer
+                const veh = appState.vehicles.find(v => v.id === rem.vehicleId);
+                const currentOdo = veh ? veh.odometer : (rem.odometer || 0);
+                document.getElementById('comp-odometer').value = currentOdo;
+
+                openModal('modal-complete-reminder');
+            } else {
+                // Uncompleting / toggling back to active
+                rem.completed = false;
+                saveToLocalStorage();
+                renderAll();
+                showToast('Reminder marked active');
+            }
+        }
+
+        function confirmCompleteReminder(e) {
+            e.preventDefault();
+            const id = document.getElementById('comp-rem-id').value;
+            const compDateStr = document.getElementById('comp-date').value;
+            const compOdo = parseInt(document.getElementById('comp-odometer').value) || 0;
+
+            const rem = appState.reminders.find(r => r.id === id);
+            if (!rem) return;
+
+            rem.completed = true;
+
+            // If recurring (interval months or interval dist), advance from completion date & odo
+            if (rem.intervalMonths > 0 || rem.intervalDist > 0) {
+                if (rem.intervalMonths > 0) {
+                    let d = new Date(compDateStr);
+                    d.setMonth(d.getMonth() + rem.intervalMonths);
+                    rem.date = d.toISOString().slice(0, 10);
+                } else {
+                    rem.date = null;
+                }
+
+                if (rem.intervalDist > 0) {
+                    rem.odometer = compOdo + rem.intervalDist;
+                } else {
+                    rem.odometer = null;
+                }
+
+                // Reset completed to false so the new cycle reminder is active
+                rem.completed = false;
+                showToast('Service completed! Next due cycle advanced successfully.');
+            } else {
+                showToast('Reminder marked complete');
+            }
+
+            // Update vehicle odometer if completion odo is higher
+            const veh = appState.vehicles.find(v => v.id === rem.vehicleId);
+            if (veh && compOdo > veh.odometer) {
+                veh.odometer = compOdo;
+            }
+
+            saveToLocalStorage();
+            closeModal('modal-complete-reminder');
+            renderAll();
+        }
+
+        function deleteItem(type, id) {
+            if(!confirm('Are you sure you want to delete this item?')) return;
+            if(type === 'fuel') {
+                appState.fuelLogs = appState.fuelLogs.filter(item => item.id !== id);
+            } else if(type === 'expense') {
+                appState.expenses = appState.expenses.filter(item => item.id !== id);
+            } else if(type === 'reminder') {
+                appState.reminders = appState.reminders.filter(item => item.id !== id);
+            } else if(type === 'vehicle') {
+                if(appState.vehicles.length <= 1) {
+                    showToast('Cannot delete your only vehicle', true);
+                    return;
+                }
+                appState.vehicles = appState.vehicles.filter(v => v.id !== id);
+                appState.activeVehicleId = appState.vehicles[0].id;
+            }
+            saveToLocalStorage();
+            renderAll();
+            showToast('Item deleted');
+        }
+
+        function saveVehicle(e) {
+            e.preventDefault();
+            const id = document.getElementById('veh-id').value || 'veh_' + Date.now();
+            const name = document.getElementById('veh-name').value;
+            const plate = document.getElementById('veh-plate').value;
+            const fuelType = document.getElementById('veh-fueltype').value;
+            const odometer = parseInt(document.getElementById('veh-odometer').value);
+            const photo = document.getElementById('veh-photo-data').value || '';
+            const color = document.getElementById('veh-color').value || '#10B981';
+
+            const vehicle = { id, name, plate, fuelType, odometer, photo, color };
+            const index = appState.vehicles.findIndex(v => v.id === id);
+            if (index >= 0) {
+                appState.vehicles[index] = vehicle;
+            } else {
+                appState.vehicles.push(vehicle);
+                appState.activeVehicleId = id; // Switch to newly created
+            }
+
+            saveToLocalStorage();
+            closeModal('modal-vehicle-form');
+            renderAll();
+            showToast('Vehicle saved successfully');
+        }
+
+        function setActiveVehicle(id) {
+            appState.activeVehicleId = id;
+            saveToLocalStorage();
+            closeModal('modal-vehicle-switcher');
+            renderAll();
+            showToast('Active vehicle switched');
+        }
+
+        function editVehicle(id) {
+            const v = appState.vehicles.find(veh => veh.id === id);
+            if(!v) return;
+            document.getElementById('veh-id').value = v.id;
+            document.getElementById('veh-name').value = v.name;
+            document.getElementById('veh-plate').value = v.plate;
+            document.getElementById('veh-fueltype').value = v.fuelType;
+            document.getElementById('veh-odometer').value = v.odometer;
+            document.getElementById('veh-photo-data').value = v.photo || '';
+            if (v.photo) {
+                document.getElementById('veh-photo-preview').innerHTML = `<img src="${v.photo}" class="w-full h-full object-cover">`;
+                document.getElementById('btn-color-match').disabled = false;
+            } else {
+                document.getElementById('veh-photo-preview').innerHTML = `<svg class="app-icon text-xl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`;
+                document.getElementById('btn-color-match').disabled = true;
+            }
+            const col = v.color || '#10B981';
+            document.getElementById('veh-color').value = col;
+            document.getElementById('veh-color-text').value = col;
+            document.getElementById('veh-modal-title').innerHTML = '<svg class="app-icon text-primary mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17H3a1 1 0 0 1-1-1v-3.2c0-.7.3-1.3.9-1.7L6 9l2.4-3.2c.4-.5 1-.8 1.6-.8h5.5c.7 0 1.4.4 1.8 1l2.2 3.5 1.8.8c.4.2.7.6.7 1.1V16a1 1 0 0 1-1 1h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/><path d="M10 17h4"/><path d="M6 9h13.5"/></svg> Edit Vehicle';
+            closeModal('modal-vehicle-switcher');
+            openModal('modal-vehicle-form');
+        }
+
+        /* ==================== RENDERING UI ==================== */
+        function renderAll() {
+            const activeVeh = appState.vehicles.find(v => v.id === appState.activeVehicleId) || appState.vehicles[0];
+            if(!activeVeh) return;
+
+            // Header vehicle info
+            document.getElementById('current-vehicle-subtitle').innerText = `${activeVeh.name} (${activeVeh.plate})`;
+            
+            // Dashboard Banner
+            document.getElementById('dash-veh-name').innerText = activeVeh.name;
+            document.getElementById('dash-veh-plate').innerText = activeVeh.plate;
+            const distUnit = appState.units === 'metric' ? 'km' : 'mi';
+            document.getElementById('dash-veh-odometer').innerHTML = `<svg class="app-icon mr-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg> ${activeVeh.odometer.toLocaleString()} ${distUnit}`;
+            document.getElementById('dash-veh-fuel').innerText = activeVeh.fuelType;
+
+            // Filter data for active vehicle
+            const vehFuelLogs = appState.fuelLogs.filter(l => l.vehicleId === activeVeh.id).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const vehExpenses = appState.expenses.filter(ex => ex.vehicleId === activeVeh.id).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const vehReminders = appState.reminders.filter(r => r.vehicleId === activeVeh.id);
+
+            // Compute statistics
+            let totalFuelCost = vehFuelLogs.reduce((sum, l) => sum + l.cost, 0);
+            let totalCost = totalFuelCost + vehExpenses.reduce((sum, ex) => sum + ex.cost, 0);
+            let totalQty = vehFuelLogs.reduce((sum, l) => sum + l.qty, 0);
+            
+            let totalDistance = 0;
+            if (vehFuelLogs.length >= 2) {
+                const sortedAsc = [...vehFuelLogs].sort((a,b) => new Date(a.date) - new Date(b.date));
+                totalDistance = sortedAsc[sortedAsc.length - 1].odometer - sortedAsc[0].odometer;
+            } else if (vehFuelLogs.length === 1) {
+                totalDistance = 0;
+            }
+
+            // Efficiency calculation
+            let overallEff = 0;
+            let recentEff = 0;
+            const isMetric = appState.units === 'metric';
+            const effUnit = isMetric ? 'L/100km' : 'MPG';
+
+            // 1. Overall
+            if (vehFuelLogs.length >= 2) {
+                const sortedAsc = [...vehFuelLogs].sort((a,b) => a.odometer - b.odometer);
+                const dist = sortedAsc[sortedAsc.length - 1].odometer - sortedAsc[0].odometer;
+                const qty = sortedAsc.slice(1).reduce((sum, l) => sum + l.qty, 0); // Correctly omit first baseline fill-up
+                if (dist > 0 && qty > 0) {
+                    overallEff = isMetric ? (qty * 100) / dist : dist / qty;
+                }
+            }
+
+            // 2. 4-Week Average
+            const fourWeeksAgo = new Date();
+            fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+            const recentLogs = vehFuelLogs.filter(l => new Date(l.date) >= fourWeeksAgo);
+            
+            let hasRecent = false;
+            if (recentLogs.length >= 2) {
+                const sortedRecent = [...recentLogs].sort((a,b) => a.odometer - b.odometer);
+                const rDist = sortedRecent[sortedRecent.length - 1].odometer - sortedRecent[0].odometer;
+                const rQty = sortedRecent.slice(1).reduce((sum, l) => sum + l.qty, 0);
+                if (rDist > 0 && rQty > 0) {
+                    recentEff = isMetric ? (rQty * 100) / rDist : rDist / rQty;
+                    hasRecent = true;
+                }
+            }
+
+            const effMainEl = document.getElementById('stat-efficiency');
+            const effSubEl = document.getElementById('stat-efficiency-sub');
+
+            if (hasRecent) {
+                effMainEl.innerText = `${recentEff.toFixed(1)} ${effUnit}`;
+                effSubEl.innerHTML = `4-wk avg &bull; Overall: ${overallEff > 0 ? overallEff.toFixed(1) : '-'} ${effUnit}`;
+            } else {
+                effMainEl.innerText = overallEff > 0 ? `${overallEff.toFixed(1)} ${effUnit}` : '-';
+                effSubEl.innerHTML = overallEff > 0 ? `Overall avg (No recent data)` : 'Average consumption';
+            }
+
+            // Spending calculations
+            let recentSpend = 0;
+            vehFuelLogs.filter(l => new Date(l.date) >= fourWeeksAgo).forEach(l => recentSpend += l.cost);
+            vehExpenses.filter(ex => new Date(ex.date) >= fourWeeksAgo).forEach(ex => recentSpend += ex.cost);
+
+            let allLogDates = [
+                ...vehFuelLogs.map(l => new Date(l.date)),
+                ...vehExpenses.map(ex => new Date(ex.date))
+            ];
+            let avg4WkSpend = totalCost;
+            if (allLogDates.length > 0) {
+                let minDate = new Date(Math.min(...allLogDates));
+                let daysDiff = (new Date() - minDate) / (1000 * 60 * 60 * 24);
+                if (daysDiff >= 1) {
+                    avg4WkSpend = (totalCost / daysDiff) * 28;
+                }
+            }
+
+            document.getElementById('stat-total-spend').innerText = `${appState.currency}${recentSpend.toFixed(2)}`;
+            const statSpendSub = document.getElementById('stat-spend-sub');
+            if (statSpendSub) {
+                statSpendSub.innerHTML = `4-wk total &bull; Avg: ${appState.currency}${avg4WkSpend.toFixed(2)}`;
+            }
+
+            // Calculate recent distance
+            let recentOdos = [
+                ...vehFuelLogs.filter(l => new Date(l.date) >= fourWeeksAgo).map(l => l.odometer),
+                ...vehExpenses.filter(ex => new Date(ex.date) >= fourWeeksAgo && ex.odometer).map(ex => ex.odometer)
+            ].filter(o => o);
+            let recentDist = 0;
+            if (recentOdos.length >= 2) {
+                recentDist = Math.max(...recentOdos) - Math.min(...recentOdos);
+            } else if (recentOdos.length === 1) {
+                let oldOdos = [
+                    ...vehFuelLogs.filter(l => new Date(l.date) < fourWeeksAgo).map(l => l.odometer),
+                    ...vehExpenses.filter(ex => new Date(ex.date) < fourWeeksAgo && ex.odometer).map(ex => ex.odometer)
+                ].filter(o => o);
+                if (oldOdos.length > 0) {
+                    recentDist = Math.max(...recentOdos) - Math.max(...oldOdos);
+                }
+            }
+
+            // Calculate 4wk avg distance
+            let avg4WkDist = totalDistance;
+            if (allLogDates.length > 0) {
+                let minDate = new Date(Math.min(...allLogDates));
+                let daysDiff = (new Date() - minDate) / (1000 * 60 * 60 * 24);
+                if (daysDiff >= 1) {
+                    avg4WkDist = (totalDistance / daysDiff) * 28;
+                }
+            }
+
+            // Calculate fuel cost rates (excluding other expenses)
+            let recentFuelSpend = 0;
+            vehFuelLogs.filter(l => new Date(l.date) >= fourWeeksAgo).forEach(l => recentFuelSpend += l.cost);
+            let recentCostRate = recentDist > 0 ? recentFuelSpend / recentDist : 0;
+            let overallCostRate = totalDistance > 0 ? totalFuelCost / totalDistance : 0;
+
+            document.getElementById('stat-total-distance').innerText = `${recentDist.toLocaleString()} ${distUnit}`;
+            const statDistSub = document.getElementById('stat-distance-sub');
+            if (statDistSub) {
+                statDistSub.innerHTML = `4-wk total &bull; Avg: ${avg4WkDist.toFixed(0).toLocaleString()} ${distUnit}`;
+            }
+
+            const statCostRate = document.getElementById('stat-cost-rate');
+            if (statCostRate) {
+                statCostRate.innerText = recentCostRate > 0 ? `${appState.currency}${recentCostRate.toFixed(2)}/${distUnit}` : (recentDist === 0 && recentSpend > 0 ? 'N/A' : '-');
+            }
+            const statCostRateSub = document.getElementById('stat-cost-rate-sub');
+            if (statCostRateSub) {
+                statCostRateSub.innerText = `Overall: ${appState.currency}${overallCostRate.toFixed(2)}/${distUnit}`;
+            }
+
+            // Render Fuel Logs list
+            const fuelListEl = document.getElementById('fuel-logs-list');
+            if (vehFuelLogs.length === 0) {
+                fuelListEl.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm bg-white dark:bg-surfaceDark rounded-2xl border border-gray-100 dark:border-gray-800"><svg class="app-icon text-3xl mb-2 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M2 22h14"/><path d="M6 7h6v5H6z"/><path d="M15 9h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/><circle cx="19" cy="6" r="1"/></svg><p>No fuel logs recorded yet.</p></div>`;
+            } else {
+                fuelListEl.innerHTML = vehFuelLogs.map((l, index) => {
+                    const pricePerL = l.qty > 0 ? (l.cost / l.qty).toFixed(2) : '0.00';
+                    const dateFormatted = new Date(l.date).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
+                    return `
+                        <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="font-bold text-sm text-gray-800 dark:text-white">${dateFormatted}</span>
+                                    ${l.full ? '<span class="bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">Full Tank</span>' : ''}
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    <svg class="app-icon mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg> ${l.odometer.toLocaleString()} ${distUnit} &bull; <svg class="app-icon ml-1 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M2 22h14"/><path d="M6 7h6v5H6z"/><path d="M15 9h2a2 2 0 0 1 2 2v4a2 2 0 0 0 4 0V9l-3-3"/><circle cx="19" cy="6" r="1"/></svg> ${l.qty} ${isMetric ? 'L' : 'Gal'}
+                                    ${l.station ? `&bull; <svg class="app-icon ml-1 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>${l.station}` : ''}
+                                </p>
+                                ${l.notes ? `<p class="text-xs text-gray-400 italic mt-1">"${l.notes}"</p>` : ''}
+                            </div>
+                            <div class="text-right flex flex-col items-end">
+                                <span class="font-bold text-sm text-purple-600 dark:text-purple-400">${appState.currency}${l.cost.toFixed(2)}</span>
+                                <span class="text-[10px] text-gray-400">${appState.currency}${pricePerL}/${isMetric ? 'L' : 'Gal'}</span>
+                                <div class="flex items-center justify-end space-x-1 mt-2">
+                                <button onclick="editFuel('${l.id}')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs p-1" title="Edit"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button>
+                                <button onclick="deleteItem('fuel', '${l.id}')" class="text-red-400 hover:text-red-600 text-xs p-1" title="Delete"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+                            </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Render Expenses list
+            const expListEl = document.getElementById('expenses-list');
+            if (vehExpenses.length === 0) {
+                expListEl.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm bg-white dark:bg-surfaceDark rounded-2xl border border-gray-100 dark:border-gray-800"><svg class="app-icon text-3xl mb-2 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg><p>No extra expenses logged.</p></div>`;
+            } else {
+                expListEl.innerHTML = vehExpenses.map(ex => {
+                    return `
+                        <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                            <div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10px] px-2 py-0.5 rounded-full font-semibold">${ex.category}</span>
+                                    <span class="text-xs text-gray-400">${ex.date}</span>
+                                </div>
+                                <h4 class="font-bold text-sm text-gray-800 dark:text-white mt-1">${ex.desc}</h4>
+                                ${ex.odometer ? `<p class="text-[10px] text-gray-400 mt-0.5"><svg class="app-icon mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg> ${ex.odometer.toLocaleString()} ${distUnit}</p>` : ''}
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold text-sm text-blue-600 dark:text-blue-400">${appState.currency}${ex.cost.toFixed(2)}</span>
+                                <div class="flex items-center justify-end space-x-1 mt-1">
+                                <button onclick="editExpense('${ex.id}')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs p-1" title="Edit"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button>
+                                <button onclick="deleteItem('expense', '${ex.id}')" class="text-red-400 hover:text-red-600 text-xs p-1" title="Delete"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+                            </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Render Reminders list
+            const remListEl = document.getElementById('reminders-list');
+            const dashRemListEl = document.getElementById('dash-reminders-list');
+            
+            if (vehReminders.length === 0) {
+                const emptyRemHtml = `<div class="text-center py-6 text-gray-400 text-xs"><p>No service reminders set.</p></div>`;
+                remListEl.innerHTML = emptyRemHtml;
+                dashRemListEl.innerHTML = emptyRemHtml;
+            } else {
+                const remHtml = vehReminders.map(r => {
+                    const recText = formatRecurrence(r);
+                    return `
+                        <div class="bg-white dark:bg-surfaceDark p-3.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" ${r.completed ? 'checked' : ''} onclick="toggleReminderComplete('${r.id}')" class="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary cursor-pointer">
+                                <div>
+                                    <h4 class="font-bold text-sm text-gray-800 dark:text-white ${r.completed ? 'line-through text-gray-400' : ''}">${r.title}</h4>
+                                    <p class="text-[10px] text-gray-400 mt-0.5">
+                                        ${r.date ? `<svg class="app-icon mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>${r.date}` : ''}
+                                        ${r.odometer ? `&bull; <svg class="app-icon mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>${r.odometer.toLocaleString()} ${distUnit}` : ''}
+                                        ${recText ? `&bull; <span class="text-primary font-semibold"><svg class="app-icon mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>${recText}</span>` : ''}
+                                    </p>
+                                    ${r.notes ? `<p class="text-[10px] text-gray-500 italic mt-0.5">${r.notes}</p>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <button onclick="editReminder('${r.id}')" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs" title="Edit Reminder"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button>
+                                <button onclick="deleteItem('reminder', '${r.id}')" class="text-red-400 hover:text-red-600 text-xs p-1" title="Delete Reminder"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                remListEl.innerHTML = remHtml;
+                const now = new Date();
+                const threeWeeksFromNow = new Date();
+                threeWeeksFromNow.setDate(now.getDate() + 21);
+                
+                const filteredReminders = vehReminders.filter(r => {
+                    if (r.completed) return false;
+                    let isOverdue = false;
+                    let isUpcoming = false;
+                    if (r.date) {
+                        const dueDate = new Date(r.date);
+                        if (dueDate < now) isOverdue = true;
+                        else if (dueDate <= threeWeeksFromNow) isUpcoming = true;
+                    }
+                    if (r.odometer !== null && r.odometer !== undefined) {
+                        if (r.odometer <= activeVeh.odometer) isOverdue = true;
+                        else if (r.odometer <= activeVeh.odometer + 500) isUpcoming = true;
+                    }
+                    return isOverdue || isUpcoming;
+                });
+
+                if (filteredReminders.length === 0) {
+                    dashRemListEl.innerHTML = `<p class="text-xs text-gray-400 text-center py-2">No upcoming or overdue reminders (next 3 weeks or 500 ${distUnit}).</p>`;
+                } else {
+                    dashRemListEl.innerHTML = filteredReminders.map(r => {
+                        const now = new Date();
+                        let isOverdue = false;
+                        if (r.date && new Date(r.date) < now) isOverdue = true;
+                        if (r.odometer !== null && r.odometer !== undefined && r.odometer <= activeVeh.odometer) isOverdue = true;
+
+                        const badgeClass = isOverdue ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300' : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300';
+                        const badgeText = isOverdue ? 'Overdue' : 'Upcoming';
+                        
+                        return `
+                            <div class="flex items-center justify-between text-xs py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                                <div class="flex items-center space-x-2">
+                                    <span class="px-2 py-0.5 rounded-full font-bold text-[10px] ${badgeClass}">${badgeText}</span>
+                                    <span class="font-semibold text-gray-800 dark:text-white">${r.title}</span>
+                                </div>
+                                <span class="text-gray-400 font-medium">
+                                    ${r.date ? r.date : ''} ${r.date && r.odometer ? '&bull;' : ''} ${r.odometer ? r.odometer.toLocaleString() + ' ' + distUnit : ''}
+                                </span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            // Render Recent History on Dashboard
+            const dashRecentEl = document.getElementById('dash-recent-list');
+            const combinedHistory = [
+                ...vehFuelLogs.map(l => ({type: 'fuel', date: l.date, title: `Fill-up (${l.qty} ${isMetric ? 'L' : 'Gal'})`, amount: `${appState.currency}${l.cost.toFixed(2)}`, sub: l.station || 'Fuel Station'})),
+                ...vehExpenses.map(ex => ({type: 'expense', date: ex.date, title: ex.desc, amount: `${appState.currency}${ex.cost.toFixed(2)}`, sub: ex.category}))
+            ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+
+            if (combinedHistory.length === 0) {
+                dashRecentEl.innerHTML = `<p class="text-center py-4 text-gray-400 text-xs">No recent activity.</p>`;
+            } else {
+                dashRecentEl.innerHTML = combinedHistory.map(h => `
+                    <div class="py-2.5 flex justify-between items-center text-xs border-b border-gray-100 dark:border-gray-800 last:border-0">
+                        <div class="flex items-center space-x-2.5 py-2">
+                            <div class="w-7 h-7 rounded-full ${h.type === 'fuel' ? 'bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400'} flex items-center justify-center text-xs">
+                                ${getIconSvg(h.type === 'fuel' ? 'gas-pump' : 'receipt')}
+                            </div>
+                            <div>
+                                <p class="font-bold text-gray-800 dark:text-white">${h.title}</p>
+                                <p class="text-[10px] text-gray-400">${h.sub} &bull; ${new Date(h.date).toLocaleDateString()}</p>
+                            </div>
+                        </div>
+                        <span class="font-bold ${h.type === 'fuel' ? 'text-purple-600 dark:text-purple-400' : 'text-blue-600 dark:text-blue-400'}">${h.amount}</span>
+                    </div>
+                `).join('');
+            }
+
+            // Render Garage Vehicles List
+            const garageEl = document.getElementById('vehicle-list-container');
+            garageEl.innerHTML = appState.vehicles.map(v => `
+                <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border ${v.id === appState.activeVehicleId ? 'border-primary ring-1 ring-primary' : 'border-gray-100 dark:border-gray-800'} flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">
+                            <svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 class="font-bold text-sm text-gray-800 dark:text-white">${v.name}</h3>
+                                ${v.id === appState.activeVehicleId ? '<span class="bg-primary/20 text-primary text-[10px] px-2 py-0.5 rounded-full font-bold">Active</span>' : ''}
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Plate: <span class="font-semibold">${v.plate}</span> &bull; Fuel: ${v.fuelType}</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5"><svg class="app-icon mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg> ${v.odometer.toLocaleString()} ${distUnit}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        ${v.id !== appState.activeVehicleId ? `<button onclick="setActiveVehicle('${v.id}')" class="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-semibold rounded-xl transition">Select</button>` : ''}
+                        <button onclick="editVehicle('${v.id}')" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></button>
+                        ${appState.vehicles.length > 1 ? `<button onclick="deleteItem('vehicle', '${v.id}')" class="p-2 text-red-400 hover:text-red-600 text-xs"><svg class="app-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderVehicleSwitcherList() {
+            const listEl = document.getElementById('modal-vehicle-list');
+            listEl.innerHTML = appState.vehicles.map(v => `
+                <div onclick="setActiveVehicle('${v.id}')" class="p-3 rounded-xl border ${v.id === appState.activeVehicleId ? 'border-primary bg-primary/5' : 'border-gray-200 dark:border-gray-700'} flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                    <div>
+                        <h4 class="font-bold text-sm text-gray-800 dark:text-white">${v.name}</h4>
+                        <p class="text-xs text-gray-400">${v.plate} &bull; ${v.fuelType}</p>
+                    </div>
+                    ${v.id === appState.activeVehicleId ? '<svg class="app-icon text-primary text-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>' : ''}
+                </div>
+            `).join('');
+        }
+
+        /* ==================== CHARTS RENDERING ==================== */
+        function getStatsRangeMonths(rangeKey) {
+            if (rangeKey === '6m') return 6;
+            if (rangeKey === '12m') return 12;
+            if (rangeKey === '24m') return 24;
+            return null; // 'all'
+        }
+
+        function toggleEffSmoothing() {
+            const chk = document.getElementById('chk-eff-smooth');
+            appState.effSmooth = chk ? chk.checked : true;
+            saveToLocalStorage();
+            renderCharts();
+        }
+
+        function setStatsRange(rangeKey) {
+            appState.statsRange = rangeKey;
+            saveToLocalStorage();
+            updateStatsRangeButtons();
+            renderCharts();
+        }
+
+        function updateStatsRangeButtons() {
+            const currentRange = appState.statsRange || '6m';
+            ['6m', '12m', '24m', 'all'].forEach(r => {
+                const btn = document.getElementById(`btn-range-${r}`);
+                if (btn) {
+                    if (r === currentRange) {
+                        btn.className = "px-2.5 py-1 rounded-lg transition bg-white dark:bg-bgDark text-primary shadow-sm font-semibold";
+                    } else {
+                        btn.className = "px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200";
+                    }
+                }
+            });
+        }
+
+        function setSpendingView(view) {
+            appState.spendingView = view;
+            saveToLocalStorage();
+            // Update button styles
+            ['fuel', 'expense', 'both'].forEach(v => {
+                const btn = document.getElementById(`btn-spend-${v}`);
+                if (btn) {
+                    if (v === view) {
+                        btn.className = "px-2.5 py-1 rounded-lg transition bg-white dark:bg-surfaceDark text-primary shadow-sm font-semibold";
+                    } else {
+                        btn.className = "px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200";
+                    }
+                }
+            });
+            renderCharts();
+        }
+
+        function renderCharts() {
+            const activeVeh = appState.vehicles.find(v => v.id === appState.activeVehicleId) || appState.vehicles[0];
+            if(!activeVeh) return;
+
+            updateStatsRangeButtons();
+
+            const vehFuelLogs = [...appState.fuelLogs.filter(l => l.vehicleId === activeVeh.id)].sort((a,b) => new Date(a.date) - new Date(b.date));
+            const vehExpenses = appState.expenses.filter(ex => ex.vehicleId === activeVeh.id);
+
+            const isMetric = appState.units === 'metric';
+
+            // Sync spending view buttons active state
+            const currentView = appState.spendingView || 'fuel';
+            ['fuel', 'expense', 'both'].forEach(v => {
+                const btn = document.getElementById(`btn-spend-${v}`);
+                if (btn) {
+                    if (v === currentView) {
+                        btn.className = "px-2.5 py-1 rounded-lg transition bg-white dark:bg-surfaceDark text-primary shadow-sm font-semibold";
+                    } else {
+                        btn.className = "px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200";
+                    }
+                }
+            });
+
+            // Determine time-frame cutoff anchored to the vehicle's latest recorded entry
+            const rangeMonths = getStatsRangeMonths(appState.statsRange || '6m');
+            const allDatesMs = [
+                ...vehFuelLogs.map(l => new Date(l.date).getTime()),
+                ...vehExpenses.map(ex => new Date(ex.date).getTime())
+            ].filter(t => !isNaN(t));
+
+            let cutoffDate = null;
+            let latestDate = allDatesMs.length > 0 ? new Date(Math.max(...allDatesMs)) : new Date();
+            if (rangeMonths !== null && allDatesMs.length > 0) {
+                cutoffDate = new Date(latestDate.getFullYear(), latestDate.getMonth() - rangeMonths, latestDate.getDate());
+            }
+
+            // Chart 1: Compute full efficiency series first so rolling 6-wk avg stays accurate at window start
+            let allLogDetails = []; // {date, label, eff}
+
+            for(let i = 1; i < vehFuelLogs.length; i++) {
+                const prev = vehFuelLogs[i-1];
+                const curr = vehFuelLogs[i];
+                const dist = curr.odometer - prev.odometer;
+                if (dist > 0 && curr.qty > 0) {
+                    const dt = new Date(curr.date);
+                    let eff = isMetric ? (curr.qty * 100) / dist : dist / curr.qty;
+                    const effVal = parseFloat(eff.toFixed(1));
+                    allLogDetails.push({
+                        date: dt,
+                        label: dt.toLocaleDateString(undefined, {month: 'short', day: 'numeric'}),
+                        eff: effVal
+                    });
+                }
+            }
+
+            // Compute rolling 6-week average for efficiency
+            const sixWeeksMs = 6 * 7 * 24 * 60 * 60 * 1000;
+            allLogDetails.forEach(item => {
+                const windowStart = new Date(item.date.getTime() - sixWeeksMs);
+                const windowLogs = allLogDetails.filter(l => l.date >= windowStart && l.date <= item.date);
+                if (windowLogs.length > 0) {
+                    const sum = windowLogs.reduce((acc, l) => acc + l.eff, 0);
+                    item.rolling6Wk = parseFloat((sum / windowLogs.length).toFixed(1));
+                } else {
+                    item.rolling6Wk = item.eff;
+                }
+            });
+
+            // Filter efficiency points to selected time frame
+            const visibleLogDetails = cutoffDate
+                ? allLogDetails.filter(item => item.date >= cutoffDate)
+                : allLogDetails;
+
+            const effPoints = visibleLogDetails.map(item => ({ x: item.date.getTime(), y: item.eff }));
+            const rolling6WkPoints = visibleLogDetails.map(item => ({ x: item.date.getTime(), y: item.rolling6Wk }));
+
+            // Compute overall efficiency for the horizontal average line
+            let chartOverallEff = 0;
+            if (vehFuelLogs.length >= 2) {
+                const sortedAsc = [...vehFuelLogs].sort((a,b) => a.odometer - b.odometer);
+                const dist = sortedAsc[sortedAsc.length - 1].odometer - sortedAsc[0].odometer;
+                const qty = sortedAsc.slice(1).reduce((sum, l) => sum + l.qty, 0);
+                if (dist > 0 && qty > 0) {
+                    chartOverallEff = isMetric ? (qty * 100) / dist : dist / qty;
+                }
+            }
+            const overallVal = parseFloat(chartOverallEff.toFixed(1));
+            const overallEffLinePoints = visibleLogDetails.length > 0
+                ? [
+                    { x: visibleLogDetails[0].date.getTime(), y: overallVal },
+                    { x: visibleLogDetails[visibleLogDetails.length - 1].date.getTime(), y: overallVal }
+                  ]
+                : [];
+
+            const fallbackStart = Date.now() - 86400000;
+            const fallbackEnd = Date.now();
+            const fallbackPoints = [{ x: fallbackStart, y: 0 }, { x: fallbackEnd, y: 0 }];
+
+            const ctxEff = document.getElementById('chartEfficiency').getContext('2d');
+            if(chartEfficiencyInstance) chartEfficiencyInstance.destroy();
+
+            const isSmooth = appState.effSmooth !== false;
+            const chkSmooth = document.getElementById('chk-eff-smooth');
+            if (chkSmooth) chkSmooth.checked = isSmooth;
+            const lineTension = isSmooth ? 0.3 : 0;
+
+            const isTmog = getNormalizedThemeMode() === 'tmog';
+            const effPrimaryColor = isTmog ? (appState.darkMode ? '#FFFFFF' : '#141416') : adjustColorForChart(getActivePrimaryColor());
+            const effRollingColor = isTmog ? (appState.darkMode ? '#A1A1AA' : '#71717A') : '#A78BFA';
+            const effOverallColor = isTmog ? (appState.darkMode ? '#71717A' : '#A1A1AA') : '#F59E0B';
+            const chartGridColor = isTmog ? (appState.darkMode ? '#272729' : '#E4E4E7') : (appState.darkMode ? '#374151' : '#E5E7EB');
+            const chartTickColor = isTmog ? (appState.darkMode ? '#A1A1AA' : '#52525B') : (appState.darkMode ? '#9CA3AF' : '#4B5563');
+
+            chartEfficiencyInstance = new Chart(ctxEff, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: isMetric ? 'Efficiency (L/100km)' : 'Efficiency (MPG)',
+                            data: effPoints.length > 0 ? effPoints : fallbackPoints,
+                            borderColor: effPrimaryColor,
+                            backgroundColor: hexToRgba(effPrimaryColor, 0.08),
+                            borderWidth: 2.5,
+                            tension: lineTension,
+                            fill: true,
+                            pointRadius: 0,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Rolling 6-wk Avg',
+                            data: rolling6WkPoints.length > 0 ? rolling6WkPoints : fallbackPoints,
+                            borderColor: effRollingColor,
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: lineTension,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 4
+                        },
+                        {
+                            label: 'Overall Average',
+                            data: overallEffLinePoints.length > 0 ? overallEffLinePoints : fallbackPoints,
+                            borderColor: effOverallColor,
+                            backgroundColor: 'transparent',
+                            borderWidth: 1.5,
+                            borderDash: [3, 3],
+                            tension: 0,
+                            fill: false,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    plugins: { 
+                        legend: { 
+                            display: true, 
+                            position: 'bottom',
+                            labels: { boxWidth: 12, font: { size: 10 }, color: chartTickColor } 
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(items) {
+                                    if (!items || !items.length) return '';
+                                    const d = new Date(items[0].parsed.x);
+                                    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { grace: '10%', grid: { color: chartGridColor }, ticks: { color: chartTickColor, font: {size: 10} } },
+                        x: {
+                            type: 'time',
+                            time: {
+                                tooltipFormat: 'MMM d, yyyy',
+                                displayFormats: {
+                                    day: 'MMM d',
+                                    week: 'MMM d',
+                                    month: 'MMM yyyy',
+                                    quarter: 'MMM yyyy',
+                                    year: 'yyyy'
+                                }
+                            },
+                            grid: { display: false },
+                            ticks: {
+                                color: chartTickColor,
+                                font: { size: 10 },
+                                maxRotation: 0,
+                                autoSkip: true
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Monthly Spending (Fuel only, Expenses only, or Both)
+            const monthlyFuel = {};
+            const monthlyExp = {};
+            
+            vehFuelLogs.forEach(l => {
+                const monthKey = l.date.substring(0, 7); // YYYY-MM
+                monthlyFuel[monthKey] = (monthlyFuel[monthKey] || 0) + l.cost;
+            });
+            vehExpenses.forEach(ex => {
+                const monthKey = ex.date.substring(0, 7);
+                monthlyExp[monthKey] = (monthlyExp[monthKey] || 0) + ex.cost;
+            });
+
+            const allMonthsSet = new Set([...Object.keys(monthlyFuel), ...Object.keys(monthlyExp)]);
+            let sortedMonths = Array.from(allMonthsSet).sort();
+            if (rangeMonths !== null && sortedMonths.length > 0) {
+                const cutoffMonthKey = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}`;
+                sortedMonths = sortedMonths.filter(m => m >= cutoffMonthKey);
+            }
+            
+            const spendLabels = sortedMonths.map(m => {
+                const [y, mo] = m.split('-');
+                const d = new Date(y, mo - 1, 1);
+                return d.toLocaleDateString(undefined, {month: 'short', year: '2-digit'});
+            });
+
+            const fuelValues = sortedMonths.map(m => parseFloat((monthlyFuel[m] || 0).toFixed(2)));
+            const expValues = sortedMonths.map(m => parseFloat((monthlyExp[m] || 0).toFixed(2)));
+
+            const spendFuelColor = isTmog ? (appState.darkMode ? '#FFFFFF' : '#141416') : adjustColorForChart(getActivePrimaryColor());
+            const spendExpColor = isTmog ? (appState.darkMode ? '#71717A' : '#A1A1AA') : '#3B82F6';
+
+            let datasets = [];
+            if (currentView === 'fuel') {
+                datasets.push({
+                    label: `Fuel Spending (${appState.currency})`,
+                    data: fuelValues.length > 0 ? fuelValues : [0],
+                    backgroundColor: spendFuelColor,
+                    borderRadius: 6
+                });
+            } else if (currentView === 'expense') {
+                datasets.push({
+                    label: `Expenses Spending (${appState.currency})`,
+                    data: expValues.length > 0 ? expValues : [0],
+                    backgroundColor: spendExpColor,
+                    borderRadius: 6
+                });
+            } else {
+                // Both
+                datasets.push({
+                    label: `Fuel (${appState.currency})`,
+                    data: fuelValues.length > 0 ? fuelValues : [0],
+                    backgroundColor: spendFuelColor,
+                    borderRadius: 6
+                });
+                datasets.push({
+                    label: `Expenses (${appState.currency})`,
+                    data: expValues.length > 0 ? expValues : [0],
+                    backgroundColor: spendExpColor,
+                    borderRadius: 6
+                });
+            }
+
+            const ctxSpend = document.getElementById('chartSpending').getContext('2d');
+            if(chartSpendingInstance) chartSpendingInstance.destroy();
+
+            chartSpendingInstance = new Chart(ctxSpend, {
+                type: 'bar',
+                data: {
+                    labels: spendLabels.length > 0 ? spendLabels : ['No Data'],
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            display: currentView === 'both', 
+                            position: 'bottom',
+                            labels: { boxWidth: 12, font: { size: 10 }, color: chartTickColor } 
+                        } 
+                    },
+                    scales: {
+                        y: { 
+                            stacked: currentView === 'both',
+                            grid: { color: chartGridColor }, 
+                            ticks: { color: chartTickColor, font: {size: 10} } 
+                        },
+                        x: { 
+                            stacked: currentView === 'both',
+                            grid: { display: false }, 
+                            ticks: { color: chartTickColor, font: {size: 10} } 
+                        }
+                    }
+                }
+            });
+        }
+
+        /* ==================== EXPORT / IMPORT BACKUP ==================== */
+        
+        // Handle vehicle photo upload and preview
+        function handleVehiclePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64 = e.target.result;
+                    document.getElementById('veh-photo-data').value = base64;
+                    document.getElementById('veh-photo-preview').innerHTML = `<img src="${base64}" class="w-full h-full object-cover">`;
+                    const matchBtn = document.getElementById('btn-color-match');
+                    matchBtn.disabled = false;
+                    matchBtn.title = "Click to auto-detect vehicle paint color from photo";
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Extract dominant color from vehicle photo using canvas
+        function colorMatchFromPhoto() {
+            const photoData = document.getElementById('veh-photo-data').value;
+            if (!photoData) {
+                showToast('Please upload a vehicle photo first', true);
+                return;
+            }
+
+            const img = new Image();
+            img.src = photoData;
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 50;
+                canvas.height = 50;
+                ctx.drawImage(img, 0, 0, 50, 50);
+
+                const imgData = ctx.getImageData(0, 0, 50, 50).data;
+                let rSum = 0, gSum = 0, bSum = 0, count = 0;
+
+                // Sample pixels, ignoring extreme white/black background pixels if possible
+                for (let i = 0; i < imgData.length; i += 4) {
+                    const r = imgData[i];
+                    const g = imgData[i+1];
+                    const b = imgData[i+2];
+                    const alpha = imgData[i+3];
+
+                    if (alpha > 128) {
+                        // brightness filter to avoid pure white/black background
+                        const brightness = (r * 0.299 + g * 0.587 + b * 0.114);
+                        if (brightness > 20 && brightness < 240) {
+                            rSum += r;
+                            gSum += g;
+                            bSum += b;
+                            count++;
+                        }
+                    }
+                }
+
+                if (count === 0) {
+                    // Fallback to average of all opaque pixels
+                    for (let i = 0; i < imgData.length; i += 4) {
+                        rSum += imgData[i];
+                        gSum += imgData[i+1];
+                        bSum += imgData[i+2];
+                        count++;
+                    }
+                }
+
+                const avgR = Math.round(rSum / count);
+                const avgG = Math.round(gSum / count);
+                const avgB = Math.round(bSum / count);
+
+                const hex = "#" + ((1 << 24) + (avgR << 16) + (avgG << 8) + avgB).toString(16).slice(1).toUpperCase();
+                
+                document.getElementById('veh-color').value = hex;
+                document.getElementById('veh-color-text').value = hex;
+                showToast(`Color matched successfully: ${hex}`);
+            };
+        }
+
+function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `jrmvm_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            showToast('Backup JSON exported successfully');
+        }
+
+        function importData(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = function(e) {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        if (parsed.vehicles && parsed.fuelLogs) {
+                            appState = parsed;
+                            saveToLocalStorage();
+                            applyTheme();
+                            updateUnitLabels();
+                            renderAll();
+                            closeModal('modal-settings');
+                            showToast('Data restored successfully');
+                        } else {
+                            showToast('Invalid backup file format', true);
+                        }
+                    } catch (err) {
+                        showToast('Error reading JSON file', true);
+                    }
+                };
+            }
+        }
+    
+        /* ==================== FUELIO CSV ==================== */
+        function exportFuelioCSV() {
+            let csv = '';
+            const q = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+            
+            // ## Vehicle
+            csv += '"## Vehicle"\n';
+            csv += '"Name","Description","DistUnit","FuelUnit","ConsumptionUnit","ImportCSVDateFormat","VIN","Insurance","Plate","Make","Model","Year","TankCount","Tank1Type","Tank2Type","Active","Tank1Capacity","Tank2Capacity","FuelUnitTank2","FuelConsumptionTank2","guid","lastupdated"\n';
+            
+            appState.vehicles.forEach(v => {
+                csv += `${q(v.name)},"","0","0","0","yyyy-MM-dd","","",${q(v.plate)},"","","",,"1","100","0","1","0.0","0.0","0","0","${v.id}","${Date.now()}"\n`;
+            });
+            
+            // ## Log
+            csv += '"## Log"\n';
+            csv += '"Data","Odo (km)","Fuel (litres)","Full","Price (optional)","l/100km (optional)","latitude (optional)","longitude (optional)","City (optional)","Notes (optional)","Missed","TankNumber","FuelType","VolumePrice","StationID (optional)","ExcludeDistance","UniqueId","TankCalc","Weather","guid","lastupdated"\n';
+            appState.fuelLogs.forEach(l => {
+                const vprice = l.qty > 0 ? (l.cost / l.qty).toFixed(3) : '';
+                const dt = l.date.replace('T', ' ');
+                const full = l.full ? '1' : '0';
+                const missed = l.missed ? '1' : '0';
+                csv += `${q(dt)},${q(l.odometer)},${q(l.qty)},${q(full)},${q(l.cost)},"","","",${q(l.station)},${q(l.notes)},${q(missed)},"1","102",${q(vprice)},"","0.0",${q(l.id.replace('fuel_',''))},"0.0",,"${l.id}","${Date.now()}"\n`;
+            });
+            
+            // ## CostCategories
+            csv += '"## CostCategories"\n';
+            csv += '"CostTypeID","Name","priority","color","guid","lastupdated"\n';
+            const cats = ["Maintenance", "Insurance", "Parking", "Tolls", "Car Wash", "Fine", "Other"];
+            cats.forEach((c, i) => {
+                csv += `"${i+1}",${q(c)},"0","",${q('cat_'+i)},"${Date.now()}"\n`;
+            });
+            
+            // ## Costs
+            csv += '"## Costs"\n';
+            csv += '"CostTitle","Date","Odo","CostTypeID","Notes","Cost","flag","idR","read","RemindOdo","RemindDate","isTemplate","RepeatOdo","RepeatMonths","isIncome","UniqueId","guid","lastupdated"\n';
+            appState.expenses.forEach(ex => {
+                let cid = cats.indexOf(ex.category) + 1;
+                if(cid === 0) cid = 7;
+                const dt = ex.date.includes(' ') ? ex.date : ex.date + ' 00:00';
+                csv += `${q(ex.desc)},${q(dt)},${q(ex.odometer || 0)},${q(cid)},"Cost",${q(ex.cost)},"0","0","1","0","", "0","0","0","0",${q(ex.id.replace('exp_',''))},"${ex.id}","${Date.now()}"\n`;
+            });
+
+            const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `Fuelio_Export_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            showToast('Fuelio CSV exported successfully');
+        }
+
+        function parseCSVLine(text) {
+            const result = [];
+            let cur = '';
+            let inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                if (inQuotes) {
+                    if (char === '"') {
+                        if (i + 1 < text.length && text[i+1] === '"') {
+                            cur += '"';
+                            i++;
+                        } else {
+                            inQuotes = false;
+                        }
+                    } else {
+                        cur += char;
+                    }
+                } else {
+                    if (char === '"') {
+                        inQuotes = true;
+                    } else if (char === ',') {
+                        result.push(cur);
+                        cur = '';
+                    } else {
+                        cur += char;
+                    }
+                }
+            }
+            result.push(cur);
+            return result;
+        }
+
+        function importFuelioCSV(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = function(e) {
+                    try {
+                        const lines = e.target.result.split(/\r?\n/);
+                        let section = '';
+                        let headers = [];
+                        let costCats = {}; // ID -> Name
+                        
+                        let newVehicles = [];
+                        let newLogs = [];
+                        let newCosts = [];
+                        let currentVid = appState.activeVehicleId;
+
+                        for (let line of lines) {
+                            line = line.trim();
+                            if (!line) continue;
+
+                            if (line.startsWith('"## ')) {
+                                section = line;
+                                headers = [];
+                                continue;
+                            }
+
+                            const parsed = parseCSVLine(line);
+
+                            if (headers.length === 0) {
+                                headers = parsed;
+                                continue;
+                            }
+
+                            const row = {};
+                            headers.forEach((h, i) => { row[h] = parsed[i]; });
+
+                            if (section === '"## Vehicle"') {
+                                const vId = row['guid'] || 'veh_' + Date.now() + Math.random().toString().slice(2,8);
+                                currentVid = vId; // link subsequent logs to this vehicle
+                                newVehicles.push({
+                                    id: vId,
+                                    name: row['Name'] || 'Imported Vehicle',
+                                    plate: row['Plate'] || '',
+                                    fuelType: 'Petrol', // Fuelio uses ints, simplify to Petrol
+                                    odometer: 0
+                                });
+                            } else if (section === '"## CostCategories"') {
+                                costCats[row['CostTypeID']] = row['Name'];
+                            } else if (section === '"## Log"') {
+                                // Find keys flexibly
+                                const dateKey = Object.keys(row).find(k => k.toLowerCase().includes('data') || k.toLowerCase() === 'date') || 'Data';
+                                const odoKey = Object.keys(row).find(k => k.toLowerCase().includes('odo')) || 'Odo (km)';
+                                const qtyKey = Object.keys(row).find(k => k.toLowerCase().includes('fuel (')) || 'Fuel (litres)';
+                                const priceKey = Object.keys(row).find(k => k.toLowerCase().includes('price')) || 'Price (optional)';
+                                const cityKey = Object.keys(row).find(k => k.toLowerCase().includes('city')) || 'City (optional)';
+                                const notesKey = Object.keys(row).find(k => k.toLowerCase().includes('notes')) || 'Notes (optional)';
+
+                                const d = row[dateKey];
+                                if (!d) continue;
+
+                                newLogs.push({
+                                    id: row['guid'] || 'fuel_' + Date.now() + Math.random().toString().slice(2,8),
+                                    vehicleId: currentVid,
+                                    date: d.replace(' ', 'T'), // standard html localdatetime
+                                    odometer: parseInt(row[odoKey]) || 0,
+                                    qty: parseFloat(row[qtyKey]) || 0,
+                                    cost: parseFloat(row[priceKey]) || 0,
+                                    full: row['Full'] === '1',
+                                    missed: row['Missed'] === '1',
+                                    station: row[cityKey] || '',
+                                    notes: row[notesKey] || ''
+                                });
+                            } else if (section === '"## Costs"') {
+                                const dt = row['Date'] ? row['Date'].split(' ')[0] : '';
+                                if (!dt) continue;
+                                const catName = costCats[row['CostTypeID']] || 'Other';
+                                
+                                // Map to our simple categories
+                                const cats = ["Maintenance", "Insurance", "Parking", "Tolls", "Car Wash", "Fine"];
+                                let finalCat = 'Other';
+                                for (let c of cats) {
+                                    if (catName.toLowerCase().includes(c.toLowerCase())) finalCat = c;
+                                }
+                                if (catName.toLowerCase().includes('service') || catName.toLowerCase().includes('repair')) finalCat = 'Maintenance';
+
+                                newCosts.push({
+                                    id: row['guid'] || 'exp_' + Date.now() + Math.random().toString().slice(2,8),
+                                    vehicleId: currentVid,
+                                    date: dt,
+                                    category: finalCat,
+                                    cost: parseFloat(row['Cost']) || 0,
+                                    odometer: parseInt(row['Odo']) || null,
+                                    desc: row['CostTitle'] || 'Imported Expense'
+                                });
+                            }
+                        }
+
+                        // Apply to state
+                        if (newVehicles.length > 0) {
+                            newVehicles.forEach(nv => {
+                                // Find highest odo for this vehicle
+                                const vLogs = newLogs.filter(l => l.vehicleId === nv.id);
+                                if (vLogs.length > 0) {
+                                    const maxOdo = Math.max(...vLogs.map(l => l.odometer));
+                                    nv.odometer = maxOdo;
+                                }
+                                
+                                const existing = appState.vehicles.find(v => v.id === nv.id || v.name === nv.name);
+                                if (existing) {
+                                    nv.id = existing.id; // use existing ID
+                                } else {
+                                    appState.vehicles.push(nv);
+                                }
+                            });
+                        }
+                        
+                        // Merge logs avoiding duplicates by ID or Timestamp
+                        newLogs.forEach(nl => {
+                            if (!appState.fuelLogs.find(l => l.id === nl.id || (l.date === nl.date && l.odometer === nl.odometer))) {
+                                appState.fuelLogs.push(nl);
+                            }
+                        });
+                        
+                        newCosts.forEach(nc => {
+                            if (!appState.expenses.find(e => e.id === nc.id || (e.date === nc.date && e.cost === nc.cost))) {
+                                appState.expenses.push(nc);
+                            }
+                        });
+
+                        // Re-sort
+                        appState.fuelLogs.sort((a,b) => new Date(b.date) - new Date(a.date));
+                        appState.expenses.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+                        saveToLocalStorage();
+                        renderAll();
+                        renderVehicleSwitcherList();
+                        closeModal('modal-settings');
+                        showToast('Fuelio CSV imported successfully!');
+
+                    } catch (err) {
+                        console.error(err);
+                        showToast('Error reading Fuelio CSV file', true);
+                    }
+                };
+            }
+        }
+    </script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
