@@ -512,44 +512,54 @@
         <section id="tab-stats" class="tab-content hidden p-4 space-y-4 max-w-xl mx-auto">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <h2 class="text-lg font-bold">Statistics & Analytics</h2>
-                <div class="flex bg-gray-100 dark:bg-surfaceDark p-1 rounded-xl text-xs font-semibold border border-gray-200/80 dark:border-gray-800 self-start sm:self-auto">
-                    <button type="button" onclick="setStatsRange('6m')" id="btn-range-6m" class="px-2.5 py-1 rounded-lg transition bg-white dark:bg-bgDark text-primary shadow-sm">6mo</button>
-                    <button type="button" onclick="setStatsRange('12m')" id="btn-range-12m" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">12mo</button>
-                    <button type="button" onclick="setStatsRange('24m')" id="btn-range-24m" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">24mo</button>
-                    <button type="button" onclick="setStatsRange('all')" id="btn-range-all" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">All</button>
+                <div class="flex bg-gray-100 dark:bg-surfaceDark p-1 rounded-xl text-xs font-semibold border border-gray-200/80 dark:border-gray-800 self-start sm:self-auto max-w-full overflow-x-auto hide-scrollbar">
+                    <button type="button" onclick="setStatsRange('3w')" id="btn-range-3w" class="px-2 py-1 rounded-lg transition whitespace-nowrap text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">3wk</button>
+                    <button type="button" onclick="setStatsRange('6w')" id="btn-range-6w" class="px-2 py-1 rounded-lg transition whitespace-nowrap text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">6wk</button>
+                    <button type="button" onclick="setStatsRange('3m')" id="btn-range-3m" class="px-2 py-1 rounded-lg transition whitespace-nowrap text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">3mo</button>
+                    <button type="button" onclick="setStatsRange('6m')" id="btn-range-6m" class="px-2 py-1 rounded-lg transition whitespace-nowrap bg-white dark:bg-bgDark text-primary shadow-sm">6mo</button>
+                    <button type="button" onclick="setStatsRange('12m')" id="btn-range-12m" class="px-2 py-1 rounded-lg transition whitespace-nowrap text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">12mo</button>
+                    <button type="button" onclick="setStatsRange('24m')" id="btn-range-24m" class="px-2 py-1 rounded-lg transition whitespace-nowrap text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">24mo</button>
+                    <button type="button" onclick="setStatsRange('all')" id="btn-range-all" class="px-2 py-1 rounded-lg transition whitespace-nowrap text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">All</button>
                 </div>
             </div>
             
             <!-- Chart 1: Fuel Consumption Trends -->
             <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
-                <div class="flex items-center justify-between mb-3 gap-2">
-                    <h3 class="text-sm font-semibold flex items-center">
-                        <svg class="app-icon text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg> Fuel Efficiency Trend (<span id="lbl-eff-unit">L/100km</span>)
-                    </h3>
-                    <label class="flex items-center space-x-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+                <div class="flex items-start justify-between mb-3 gap-2">
+                    <div>
+                        <h3 class="text-sm font-semibold flex items-center">
+                            <svg class="app-icon text-purple-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg> Fuel Efficiency Trend (<span id="lbl-eff-unit">L/100km</span>)
+                        </h3>
+                        <p id="lbl-eff-direction" class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 ml-6">Lower is better</p>
+                    </div>
+                    <label class="flex items-center space-x-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 cursor-pointer select-none pt-0.5">
                         <input type="checkbox" id="chk-eff-smooth" checked onchange="toggleEffSmoothing()" class="w-3.5 h-3.5 text-primary rounded border-gray-300 dark:border-gray-600 focus:ring-primary cursor-pointer">
                         <span>Smooth</span>
                     </label>
                 </div>
-                <div class="relative h-60 w-full">
+                <div id="eff-kpi-strip" class="grid grid-cols-3 gap-2 mb-3"></div>
+                <div class="relative h-72 w-full">
                     <canvas id="chartEfficiency"></canvas>
+                    <div id="chart-eff-empty" class="hidden absolute inset-0 flex items-center justify-center text-center px-4 text-xs text-gray-400 dark:text-gray-500 pointer-events-none">Not enough fill-ups in this timeframe</div>
                 </div>
             </div>
 
-            <!-- Chart 2: Monthly Spending -->
+            <!-- Chart 2: Spending -->
             <div class="bg-white dark:bg-surfaceDark p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
                     <h3 class="text-sm font-semibold flex items-center">
-                        <svg class="app-icon text-blue-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> Monthly Spending (<span id="lbl-currency">USD</span>)
+                        <svg class="app-icon text-blue-500 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg> <span id="lbl-spending-period">Monthly</span>&nbsp;Spending (<span id="lbl-currency">USD</span>)
                     </h3>
-                    <div class="flex bg-gray-100 dark:bg-bgDark p-1 rounded-xl text-xs font-semibold">
+                    <div class="flex bg-gray-100 dark:bg-bgDark p-1 rounded-xl text-xs font-semibold self-start sm:self-auto">
                         <button onclick="setSpendingView('fuel')" id="btn-spend-fuel" class="px-2.5 py-1 rounded-lg transition bg-white dark:bg-surfaceDark text-primary shadow-sm">Fuel</button>
                         <button onclick="setSpendingView('expense')" id="btn-spend-expense" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">Expenses</button>
                         <button onclick="setSpendingView('both')" id="btn-spend-both" class="px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">Both</button>
                     </div>
                 </div>
-                <div class="relative h-60 w-full">
+                <div id="spend-kpi-strip" class="grid grid-cols-3 gap-2 mb-3"></div>
+                <div class="relative h-72 w-full">
                     <canvas id="chartSpending"></canvas>
+                    <div id="chart-spend-empty" class="hidden absolute inset-0 flex items-center justify-center text-center px-4 text-xs text-gray-400 dark:text-gray-500 pointer-events-none">No spending recorded in this timeframe</div>
                 </div>
             </div>
         </section>
@@ -2117,11 +2127,35 @@
         }
 
         /* ==================== CHARTS RENDERING ==================== */
-        function getStatsRangeMonths(rangeKey) {
-            if (rangeKey === '6m') return 6;
-            if (rangeKey === '12m') return 12;
-            if (rangeKey === '24m') return 24;
-            return null; // 'all'
+        const STATS_RANGES = {
+            '3w': { days: 21 },
+            '6w': { days: 42 },
+            '3m': { months: 3 },
+            '6m': { months: 6 },
+            '12m': { months: 12 },
+            '24m': { months: 24 },
+            'all': null
+        };
+
+        function getStatsCutoffDate(rangeKey, anchorDate) {
+            const spec = STATS_RANGES[rangeKey];
+            if (!spec) return null;
+            if (spec.days) {
+                return new Date(anchorDate.getFullYear(), anchorDate.getMonth(), anchorDate.getDate() - spec.days);
+            }
+            return new Date(anchorDate.getFullYear(), anchorDate.getMonth() - spec.months, anchorDate.getDate());
+        }
+
+        function parseLocalDate(dateStr) {
+            return new Date(dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00`);
+        }
+
+        function getWeekStartKey(dateStr) {
+            const d = parseLocalDate(dateStr);
+            const day = d.getDay();
+            const diff = day === 0 ? -6 : 1 - day;
+            const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff);
+            return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
         }
 
         function toggleEffSmoothing() {
@@ -2139,14 +2173,14 @@
         }
 
         function updateStatsRangeButtons() {
-            const currentRange = appState.statsRange || '6m';
-            ['6m', '12m', '24m', 'all'].forEach(r => {
+            const currentRange = Object.prototype.hasOwnProperty.call(STATS_RANGES, appState.statsRange) ? appState.statsRange : '6m';
+            Object.keys(STATS_RANGES).forEach(r => {
                 const btn = document.getElementById(`btn-range-${r}`);
                 if (btn) {
                     if (r === currentRange) {
-                        btn.className = "px-2.5 py-1 rounded-lg transition bg-white dark:bg-bgDark text-primary shadow-sm font-semibold";
+                        btn.className = "px-2 py-1 rounded-lg transition whitespace-nowrap bg-white dark:bg-bgDark text-primary shadow-sm font-semibold";
                     } else {
-                        btn.className = "px-2.5 py-1 rounded-lg transition text-gray-500 hover:text-gray-800 dark:hover:text-gray-200";
+                        btn.className = "px-2 py-1 rounded-lg transition whitespace-nowrap text-gray-500 hover:text-gray-800 dark:hover:text-gray-200";
                     }
                 }
             });
@@ -2194,20 +2228,23 @@
             });
 
             // Determine time-frame cutoff anchored to the vehicle's latest recorded entry
-            const rangeMonths = getStatsRangeMonths(appState.statsRange || '6m');
+            const rangeKey = Object.prototype.hasOwnProperty.call(STATS_RANGES, appState.statsRange) ? appState.statsRange : '6m';
             const allDatesMs = [
-                ...vehFuelLogs.map(l => new Date(l.date).getTime()),
-                ...vehExpenses.map(ex => new Date(ex.date).getTime())
+                ...vehFuelLogs.map(l => parseLocalDate(l.date).getTime()),
+                ...vehExpenses.map(ex => parseLocalDate(ex.date).getTime())
             ].filter(t => !isNaN(t));
 
-            let cutoffDate = null;
             let latestDate = allDatesMs.length > 0 ? new Date(Math.max(...allDatesMs)) : new Date();
-            if (rangeMonths !== null && allDatesMs.length > 0) {
-                cutoffDate = new Date(latestDate.getFullYear(), latestDate.getMonth() - rangeMonths, latestDate.getDate());
-            }
+            let cutoffDate = allDatesMs.length > 0 ? getStatsCutoffDate(rangeKey, latestDate) : null;
 
             // Chart 1: Compute full efficiency series first so rolling 6-wk avg stays accurate at window start
-            let allLogDetails = []; // {date, label, eff}
+            const effUnit = isMetric ? 'L/100km' : 'MPG';
+            const distUnit = isMetric ? 'km' : 'mi';
+            const volUnit = isMetric ? 'L' : 'gal';
+            const effDirLbl = document.getElementById('lbl-eff-direction');
+            if (effDirLbl) effDirLbl.textContent = isMetric ? 'Lower is better' : 'Higher is better';
+
+            let allLogDetails = [];
 
             for(let i = 1; i < vehFuelLogs.length; i++) {
                 const prev = vehFuelLogs[i-1];
@@ -2220,7 +2257,13 @@
                     allLogDetails.push({
                         date: dt,
                         label: dt.toLocaleDateString(undefined, {month: 'short', day: 'numeric'}),
-                        eff: effVal
+                        eff: effVal,
+                        odometer: curr.odometer,
+                        dist: dist,
+                        qty: curr.qty,
+                        station: curr.station || '',
+                        full: curr.full !== false,
+                        missed: !!curr.missed
                     });
                 }
             }
@@ -2257,16 +2300,45 @@
                 }
             }
             const overallVal = parseFloat(chartOverallEff.toFixed(1));
+            const singlePointPadMs = 3 * 24 * 60 * 60 * 1000;
+            const xMinEff = visibleLogDetails.length === 1 ? visibleLogDetails[0].date.getTime() - singlePointPadMs : undefined;
+            const xMaxEff = visibleLogDetails.length === 1 ? visibleLogDetails[0].date.getTime() + singlePointPadMs : undefined;
             const overallEffLinePoints = visibleLogDetails.length > 0
                 ? [
-                    { x: visibleLogDetails[0].date.getTime(), y: overallVal },
-                    { x: visibleLogDetails[visibleLogDetails.length - 1].date.getTime(), y: overallVal }
+                    { x: visibleLogDetails.length === 1 ? xMinEff : visibleLogDetails[0].date.getTime(), y: overallVal },
+                    { x: visibleLogDetails.length === 1 ? xMaxEff : visibleLogDetails[visibleLogDetails.length - 1].date.getTime(), y: overallVal }
                   ]
                 : [];
 
-            const fallbackStart = Date.now() - 86400000;
-            const fallbackEnd = Date.now();
-            const fallbackPoints = [{ x: fallbackStart, y: 0 }, { x: fallbackEnd, y: 0 }];
+            // Render Efficiency KPI summary strip
+            const renderKpiStrip = (containerId, items) => {
+                const el = document.getElementById(containerId);
+                if (!el) return;
+                el.innerHTML = items.map(item => `
+                    <div class="bg-gray-50 dark:bg-bgDark border border-gray-200/70 dark:border-gray-800 rounded-xl px-2.5 py-1.5">
+                        <div class="text-[10px] font-medium text-gray-500 dark:text-gray-400 truncate">${item.label}</div>
+                        <div class="text-xs font-bold text-gray-800 dark:text-white truncate mt-0.5">${item.value}</div>
+                    </div>
+                `).join('');
+            };
+
+            if (visibleLogDetails.length > 0) {
+                const latestEff = visibleLogDetails[visibleLogDetails.length - 1].eff;
+                const bestEff = isMetric
+                    ? Math.min(...visibleLogDetails.map(d => d.eff))
+                    : Math.max(...visibleLogDetails.map(d => d.eff));
+                renderKpiStrip('eff-kpi-strip', [
+                    { label: 'Latest', value: `${latestEff.toFixed(1)} ${effUnit}` },
+                    { label: 'Best (Range)', value: `${bestEff.toFixed(1)} ${effUnit}` },
+                    { label: 'Overall Avg', value: overallVal > 0 ? `${overallVal.toFixed(1)} ${effUnit}` : '—' }
+                ]);
+            } else {
+                renderKpiStrip('eff-kpi-strip', [
+                    { label: 'Latest', value: '—' },
+                    { label: 'Best (Range)', value: '—' },
+                    { label: 'Overall Avg', value: overallVal > 0 ? `${overallVal.toFixed(1)} ${effUnit}` : '—' }
+                ]);
+            }
 
             const ctxEff = document.getElementById('chartEfficiency').getContext('2d');
             if(chartEfficiencyInstance) chartEfficiencyInstance.destroy();
@@ -2277,198 +2349,346 @@
             const lineTension = isSmooth ? 0.3 : 0;
 
             const isTmog = getNormalizedThemeMode() === 'tmog';
+            const surfaceColor = isTmog ? (appState.darkMode ? '#141416' : '#FFFFFF') : (appState.darkMode ? '#1F2937' : '#FFFFFF');
             const effPrimaryColor = isTmog ? (appState.darkMode ? '#FFFFFF' : '#141416') : adjustColorForChart(getActivePrimaryColor());
-            const effRollingColor = isTmog ? (appState.darkMode ? '#A1A1AA' : '#71717A') : '#A78BFA';
+            const effRollingColor = isTmog ? (appState.darkMode ? '#A1A1AA' : '#52525B') : '#A78BFA';
             const effOverallColor = isTmog ? (appState.darkMode ? '#71717A' : '#A1A1AA') : '#F59E0B';
             const chartGridColor = isTmog ? (appState.darkMode ? '#272729' : '#E4E4E7') : (appState.darkMode ? '#374151' : '#E5E7EB');
             const chartTickColor = isTmog ? (appState.darkMode ? '#A1A1AA' : '#52525B') : (appState.darkMode ? '#9CA3AF' : '#4B5563');
 
-            chartEfficiencyInstance = new Chart(ctxEff, {
-                type: 'line',
-                data: {
-                    datasets: [
-                        {
-                            label: isMetric ? 'Efficiency (L/100km)' : 'Efficiency (MPG)',
-                            data: effPoints.length > 0 ? effPoints : fallbackPoints,
-                            borderColor: effPrimaryColor,
-                            backgroundColor: hexToRgba(effPrimaryColor, 0.08),
-                            borderWidth: 2.5,
-                            tension: lineTension,
-                            fill: true,
-                            pointRadius: 0,
-                            pointHoverRadius: 6
-                        },
-                        {
-                            label: 'Rolling 6-wk Avg',
-                            data: rolling6WkPoints.length > 0 ? rolling6WkPoints : fallbackPoints,
-                            borderColor: effRollingColor,
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            tension: lineTension,
-                            fill: false,
-                            pointRadius: 0,
-                            pointHoverRadius: 4
-                        },
-                        {
-                            label: 'Overall Average',
-                            data: overallEffLinePoints.length > 0 ? overallEffLinePoints : fallbackPoints,
-                            borderColor: effOverallColor,
-                            backgroundColor: 'transparent',
-                            borderWidth: 1.5,
-                            borderDash: [3, 3],
-                            tension: 0,
-                            fill: false,
-                            pointRadius: 0
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'nearest',
-                        axis: 'x',
-                        intersect: false
-                    },
-                    plugins: { 
-                        legend: { 
-                            display: true, 
-                            position: 'bottom',
-                            labels: { boxWidth: 12, font: { size: 10 }, color: chartTickColor } 
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: function(items) {
-                                    if (!items || !items.length) return '';
-                                    const d = new Date(items[0].parsed.x);
-                                    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                                }
+            const effEmptyEl = document.getElementById('chart-eff-empty');
+            if (visibleLogDetails.length === 0) {
+                if (effEmptyEl) effEmptyEl.classList.remove('hidden');
+            } else {
+                if (effEmptyEl) effEmptyEl.classList.add('hidden');
+
+                const basePointRadius = visibleLogDetails.length <= 12 ? 4 : 3;
+                const effPointBg = visibleLogDetails.map(d => (d.missed || !d.full) ? surfaceColor : effPrimaryColor);
+                const effPointBorder = visibleLogDetails.map(d => (d.missed || !d.full) ? effPrimaryColor : surfaceColor);
+                const effPointStyle = visibleLogDetails.map(d => (d.missed || !d.full) ? 'rectRot' : 'circle');
+
+                chartEfficiencyInstance = new Chart(ctxEff, {
+                    type: 'line',
+                    data: {
+                        datasets: [
+                            {
+                                label: effUnit,
+                                data: effPoints,
+                                borderColor: effPrimaryColor,
+                                backgroundColor: hexToRgba(effPrimaryColor, 0.08),
+                                borderWidth: 2.5,
+                                tension: lineTension,
+                                fill: true,
+                                pointRadius: basePointRadius,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: effPointBg,
+                                pointBorderColor: effPointBorder,
+                                pointBorderWidth: 1.5,
+                                pointStyle: effPointStyle
+                            },
+                            {
+                                label: 'Rolling 6-wk Avg',
+                                data: rolling6WkPoints,
+                                borderColor: effRollingColor,
+                                backgroundColor: 'transparent',
+                                borderWidth: 2,
+                                borderDash: [6, 4],
+                                tension: lineTension,
+                                fill: false,
+                                pointRadius: 0,
+                                pointHoverRadius: 4
+                            },
+                            {
+                                label: 'Overall Avg',
+                                data: overallEffLinePoints,
+                                borderColor: effOverallColor,
+                                backgroundColor: 'transparent',
+                                borderWidth: 1.5,
+                                borderDash: [2, 3],
+                                tension: 0,
+                                fill: false,
+                                pointRadius: 0,
+                                pointHoverRadius: 0
                             }
-                        }
+                        ]
                     },
-                    scales: {
-                        y: { grace: '10%', grid: { color: chartGridColor }, ticks: { color: chartTickColor, font: {size: 10} } },
-                        x: {
-                            type: 'time',
-                            time: {
-                                tooltipFormat: 'MMM d, yyyy',
-                                displayFormats: {
-                                    day: 'MMM d',
-                                    week: 'MMM d',
-                                    month: 'MMM yyyy',
-                                    quarter: 'MMM yyyy',
-                                    year: 'yyyy'
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            axis: 'x',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                align: 'start',
+                                labels: {
+                                    usePointStyle: true,
+                                    boxWidth: 10,
+                                    boxHeight: 6,
+                                    padding: 12,
+                                    font: { size: 11 },
+                                    color: chartTickColor
                                 }
                             },
-                            grid: { display: false },
-                            ticks: {
-                                color: chartTickColor,
-                                font: { size: 10 },
-                                maxRotation: 0,
-                                autoSkip: true
+                            tooltip: {
+                                padding: 10,
+                                callbacks: {
+                                    title: function(items) {
+                                        if (!items || !items.length) return '';
+                                        const d = new Date(items[0].parsed.x);
+                                        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                                    },
+                                    label: function(ctx) {
+                                        const val = ctx.parsed.y;
+                                        return `${ctx.dataset.label}: ${Number(val).toFixed(1)} ${effUnit}`;
+                                    },
+                                    afterBody: function(items) {
+                                        if (!items || !items.length) return [];
+                                        const primaryItem = items.find(it => it.datasetIndex === 0) || items[0];
+                                        const detail = visibleLogDetails[primaryItem.dataIndex];
+                                        if (!detail) return [];
+                                        const lines = [
+                                            `Odo: ${detail.odometer.toLocaleString()} ${distUnit} (+${detail.dist.toLocaleString()} ${distUnit})`,
+                                            `Fuel: ${detail.qty} ${volUnit}`
+                                        ];
+                                        if (detail.station) lines.push(`Station: ${detail.station}`);
+                                        if (detail.missed) lines.push('Flag: Missed previous fill');
+                                        else if (!detail.full) lines.push('Flag: Partial fill');
+                                        return lines;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                grace: '12%',
+                                grid: { color: chartGridColor },
+                                ticks: {
+                                    color: chartTickColor,
+                                    font: { size: 11 },
+                                    padding: 8,
+                                    callback: function(value) {
+                                        return Number(value).toFixed(1);
+                                    }
+                                }
+                            },
+                            x: {
+                                type: 'time',
+                                min: xMinEff,
+                                max: xMaxEff,
+                                time: {
+                                    tooltipFormat: 'MMM d, yyyy',
+                                    displayFormats: {
+                                        day: 'MMM d',
+                                        week: 'MMM d',
+                                        month: 'MMM yyyy',
+                                        quarter: 'MMM yyyy',
+                                        year: 'yyyy'
+                                    }
+                                },
+                                grid: { display: false },
+                                ticks: {
+                                    color: chartTickColor,
+                                    font: { size: 11 },
+                                    padding: 6,
+                                    maxRotation: 0,
+                                    autoSkip: true,
+                                    maxTicksLimit: 6
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
 
-            // Chart 2: Monthly Spending (Fuel only, Expenses only, or Both)
-            const monthlyFuel = {};
-            const monthlyExp = {};
-            
+            // Chart 2: Spending (Weekly for 3wk/6wk, Monthly for 3mo+)
+            const isWeeklySpend = rangeKey === '3w' || rangeKey === '6w';
+            const spendPeriodLbl = document.getElementById('lbl-spending-period');
+            if (spendPeriodLbl) spendPeriodLbl.textContent = isWeeklySpend ? 'Weekly' : 'Monthly';
+
+            const bucketFuel = {};
+            const bucketExp = {};
+
             vehFuelLogs.forEach(l => {
-                const monthKey = l.date.substring(0, 7); // YYYY-MM
-                monthlyFuel[monthKey] = (monthlyFuel[monthKey] || 0) + l.cost;
+                if (isWeeklySpend && cutoffDate && parseLocalDate(l.date) < cutoffDate) return;
+                const key = isWeeklySpend ? getWeekStartKey(l.date) : l.date.substring(0, 7);
+                bucketFuel[key] = (bucketFuel[key] || 0) + l.cost;
             });
             vehExpenses.forEach(ex => {
-                const monthKey = ex.date.substring(0, 7);
-                monthlyExp[monthKey] = (monthlyExp[monthKey] || 0) + ex.cost;
+                if (isWeeklySpend && cutoffDate && parseLocalDate(ex.date) < cutoffDate) return;
+                const key = isWeeklySpend ? getWeekStartKey(ex.date) : ex.date.substring(0, 7);
+                bucketExp[key] = (bucketExp[key] || 0) + ex.cost;
             });
 
-            const allMonthsSet = new Set([...Object.keys(monthlyFuel), ...Object.keys(monthlyExp)]);
-            let sortedMonths = Array.from(allMonthsSet).sort();
-            if (rangeMonths !== null && sortedMonths.length > 0) {
+            const allBucketsSet = new Set([...Object.keys(bucketFuel), ...Object.keys(bucketExp)]);
+            let sortedBuckets = Array.from(allBucketsSet).sort();
+            if (!isWeeklySpend && cutoffDate !== null && sortedBuckets.length > 0) {
                 const cutoffMonthKey = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}`;
-                sortedMonths = sortedMonths.filter(m => m >= cutoffMonthKey);
+                sortedBuckets = sortedBuckets.filter(m => m >= cutoffMonthKey);
             }
-            
-            const spendLabels = sortedMonths.map(m => {
-                const [y, mo] = m.split('-');
+
+            const spendLabels = sortedBuckets.map(key => {
+                if (isWeeklySpend) {
+                    const [y, mo, day] = key.split('-');
+                    const d = new Date(y, mo - 1, day);
+                    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                }
+                const [y, mo] = key.split('-');
                 const d = new Date(y, mo - 1, 1);
-                return d.toLocaleDateString(undefined, {month: 'short', year: '2-digit'});
+                return d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
             });
 
-            const fuelValues = sortedMonths.map(m => parseFloat((monthlyFuel[m] || 0).toFixed(2)));
-            const expValues = sortedMonths.map(m => parseFloat((monthlyExp[m] || 0).toFixed(2)));
+            const fuelValues = sortedBuckets.map(k => parseFloat((bucketFuel[k] || 0).toFixed(2)));
+            const expValues = sortedBuckets.map(k => parseFloat((bucketExp[k] || 0).toFixed(2)));
+            const activeTotals = sortedBuckets.map((_, i) => {
+                if (currentView === 'fuel') return fuelValues[i];
+                if (currentView === 'expense') return expValues[i];
+                return parseFloat((fuelValues[i] + expValues[i]).toFixed(2));
+            });
+
+            const hasSpendData = sortedBuckets.length > 0 && activeTotals.some(v => v > 0);
+            const unitPeriodLabel = isWeeklySpend ? 'Avg / Wk' : 'Avg / Mo';
+            if (hasSpendData) {
+                const totalSpendRange = activeTotals.reduce((acc, v) => acc + v, 0);
+                const avgSpendRange = totalSpendRange / activeTotals.length;
+                const peakSpendRange = Math.max(...activeTotals);
+                renderKpiStrip('spend-kpi-strip', [
+                    { label: 'Range Total', value: `${appState.currency}${totalSpendRange.toFixed(2)}` },
+                    { label: unitPeriodLabel, value: `${appState.currency}${avgSpendRange.toFixed(2)}` },
+                    { label: isWeeklySpend ? 'Peak Week' : 'Peak Month', value: `${appState.currency}${peakSpendRange.toFixed(2)}` }
+                ]);
+            } else {
+                renderKpiStrip('spend-kpi-strip', [
+                    { label: 'Range Total', value: '—' },
+                    { label: unitPeriodLabel, value: '—' },
+                    { label: isWeeklySpend ? 'Peak Week' : 'Peak Month', value: '—' }
+                ]);
+            }
 
             const spendFuelColor = isTmog ? (appState.darkMode ? '#FFFFFF' : '#141416') : adjustColorForChart(getActivePrimaryColor());
             const spendExpColor = isTmog ? (appState.darkMode ? '#71717A' : '#A1A1AA') : '#3B82F6';
 
-            let datasets = [];
-            if (currentView === 'fuel') {
-                datasets.push({
-                    label: `Fuel Spending (${appState.currency})`,
-                    data: fuelValues.length > 0 ? fuelValues : [0],
-                    backgroundColor: spendFuelColor,
-                    borderRadius: 6
-                });
-            } else if (currentView === 'expense') {
-                datasets.push({
-                    label: `Expenses Spending (${appState.currency})`,
-                    data: expValues.length > 0 ? expValues : [0],
-                    backgroundColor: spendExpColor,
-                    borderRadius: 6
-                });
-            } else {
-                // Both
-                datasets.push({
-                    label: `Fuel (${appState.currency})`,
-                    data: fuelValues.length > 0 ? fuelValues : [0],
-                    backgroundColor: spendFuelColor,
-                    borderRadius: 6
-                });
-                datasets.push({
-                    label: `Expenses (${appState.currency})`,
-                    data: expValues.length > 0 ? expValues : [0],
-                    backgroundColor: spendExpColor,
-                    borderRadius: 6
-                });
-            }
-
             const ctxSpend = document.getElementById('chartSpending').getContext('2d');
             if(chartSpendingInstance) chartSpendingInstance.destroy();
 
-            chartSpendingInstance = new Chart(ctxSpend, {
-                type: 'bar',
-                data: {
-                    labels: spendLabels.length > 0 ? spendLabels : ['No Data'],
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { 
-                            display: currentView === 'both', 
-                            position: 'bottom',
-                            labels: { boxWidth: 12, font: { size: 10 }, color: chartTickColor } 
-                        } 
+            const spendEmptyEl = document.getElementById('chart-spend-empty');
+            if (!hasSpendData) {
+                if (spendEmptyEl) spendEmptyEl.classList.remove('hidden');
+            } else {
+                if (spendEmptyEl) spendEmptyEl.classList.add('hidden');
+
+                let datasets = [];
+                const barCommon = {
+                    borderRadius: 5,
+                    borderSkipped: false,
+                    maxBarThickness: 40,
+                    borderColor: surfaceColor,
+                    borderWidth: currentView === 'both' ? 1.5 : 0
+                };
+                if (currentView === 'fuel') {
+                    datasets.push({
+                        ...barCommon,
+                        label: 'Fuel',
+                        data: fuelValues,
+                        backgroundColor: spendFuelColor
+                    });
+                } else if (currentView === 'expense') {
+                    datasets.push({
+                        ...barCommon,
+                        label: 'Expenses',
+                        data: expValues,
+                        backgroundColor: spendExpColor
+                    });
+                } else {
+                    datasets.push({
+                        ...barCommon,
+                        label: 'Fuel',
+                        data: fuelValues,
+                        backgroundColor: spendFuelColor
+                    });
+                    datasets.push({
+                        ...barCommon,
+                        label: 'Expenses',
+                        data: expValues,
+                        backgroundColor: spendExpColor
+                    });
+                }
+
+                chartSpendingInstance = new Chart(ctxSpend, {
+                    type: 'bar',
+                    data: {
+                        labels: spendLabels,
+                        datasets: datasets
                     },
-                    scales: {
-                        y: { 
-                            stacked: currentView === 'both',
-                            grid: { color: chartGridColor }, 
-                            ticks: { color: chartTickColor, font: {size: 10} } 
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
                         },
-                        x: { 
-                            stacked: currentView === 'both',
-                            grid: { display: false }, 
-                            ticks: { color: chartTickColor, font: {size: 10} } 
+                        plugins: {
+                            legend: {
+                                display: currentView === 'both',
+                                position: 'top',
+                                align: 'start',
+                                labels: {
+                                    usePointStyle: true,
+                                    boxWidth: 10,
+                                    padding: 12,
+                                    font: { size: 11 },
+                                    color: chartTickColor
+                                }
+                            },
+                            tooltip: {
+                                padding: 10,
+                                callbacks: {
+                                    label: function(ctx) {
+                                        return `${ctx.dataset.label}: ${appState.currency}${Number(ctx.parsed.y).toFixed(2)}`;
+                                    },
+                                    footer: function(items) {
+                                        if (currentView !== 'both' || !items || items.length < 2) return '';
+                                        const sum = items.reduce((acc, it) => acc + (it.parsed.y || 0), 0);
+                                        return `Total: ${appState.currency}${sum.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grace: '10%',
+                                stacked: currentView === 'both',
+                                grid: { color: chartGridColor },
+                                ticks: {
+                                    color: chartTickColor,
+                                    font: { size: 11 },
+                                    padding: 8,
+                                    callback: function(value) {
+                                        return `${appState.currency}${value}`;
+                                    }
+                                }
+                            },
+                            x: {
+                                stacked: currentView === 'both',
+                                grid: { display: false },
+                                ticks: {
+                                    color: chartTickColor,
+                                    font: { size: 11 },
+                                    padding: 6,
+                                    maxRotation: 0,
+                                    autoSkip: true,
+                                    maxTicksLimit: 8
+                                }
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
         }
 
         /* ==================== EXPORT / IMPORT BACKUP ==================== */
